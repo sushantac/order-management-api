@@ -2,6 +2,7 @@ package com.company.orderapi.integration;
 
 import org.springframework.test.context.TestPropertySource;
 
+import com.company.orderapi.domain.BaseEntity;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Table;
 import jakarta.persistence.metamodel.EntityType;
@@ -64,8 +65,13 @@ class SchemaValidationIntegrationTest {
     }
 
     @Test
-    void everyEntityTableCarriesTheSharedVersionAndAuditColumns() {
+    void everyBaseEntityTableCarriesTheSharedVersionAndAuditColumns() {
         for (EntityType<?> entity : entityManagerFactory.getMetamodel().getEntities()) {
+            // EventStoreEntry is NOT a BaseEntity: the event store is an
+            // append-only log without optimistic-lock/audit columns.
+            if (!BaseEntity.class.isAssignableFrom(entity.getJavaType())) {
+                continue;
+            }
             String table = tableName(entity);
             for (String column : REQUIRED_SHARED_COLUMNS) {
                 assertThat(columnExists(table, column))

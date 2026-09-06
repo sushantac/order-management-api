@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #18 (JPA Events & Listeners) — merged ✅ (next: PR #19)**
+> **Status: PR #19 (Event Sourcing & Event Store) — merged ✅ (next: PR #20)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -776,6 +776,36 @@ lifecycle events, decoupled from both the entity and the service layer.
    (order number generation stays there); listeners externalize shared concerns
    and keep the entity lean. They compose — this PR proves the inherited
    auditing listener AND the custom Order listener both fire on one insert.
+
+---
+
+## PR #19 — Event Sourcing & Event Store
+
+**Aspect learned:** event sourcing basics — store FACTS (events) append-only and
+rebuild state by replaying them, instead of only storing the current state.
+
+### Deliverables
+- [x] `DomainEvent` interface (aggregate id, version, occurred-at, type)
+- [x] `OrderPlacedEvent`, `OrderConfirmedEvent` (immutable records)
+- [x] `event_store` table (Liquibase): metadata + JSON payload, **UNIQUE
+      (aggregate_id, version)**
+- [x] `EventStoreEntry` entity + `EventStoreRepository`
+- [x] `EventStoreService` (append, read history, version-duplicate guard)
+- [x] `EventStoreIntegrationTest` — storage, ordered retrieval, duplicate rejection
+
+### Key questions answered
+1. **What is event sourcing?** Persist every state-changing fact, never overwrite.
+   Current state = fold over the event history; you can replay, audit, and ask
+   "what did the system look like at time T?".
+2. **How is it different from traditional CRUD?** CRUD mutates/overwrites rows
+   (the past is lost); event sourcing only ever INSERTs immutable events.
+3. **Benefits?** Complete audit trail, temporal queries, decoupled projections
+   and reliable integration events (the outbox later in the Kafka PR builds on
+   this). Costs: eventual consistency & replay logic.
+4. **Integrity mechanism:** the UNIQUE `(aggregate_id, version)` constraint
+   guarantees each fact is appended exactly once (tested: duplicate append is
+   rejected). Events are serialised as JSON; the payload column is TEXT to keep
+   JPA/PostgreSQL casts simple (JSONB would need driver-level casts).
 
 ---
 
