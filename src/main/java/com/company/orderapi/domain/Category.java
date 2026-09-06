@@ -2,6 +2,7 @@ package com.company.orderapi.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 
@@ -26,7 +27,7 @@ public class Category extends BaseEntity {
     @Column(name = "description", columnDefinition = "text")
     private String description;
 
-    @ManyToMany(mappedBy = "categories")
+    @ManyToMany(mappedBy = "categories", fetch = FetchType.LAZY)
     private Set<Product> products = new LinkedHashSet<>();
 
     protected Category() {
