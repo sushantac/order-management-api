@@ -1,5 +1,7 @@
 package com.company.orderapi.integration;
 
+import org.springframework.test.context.TestPropertySource;
+
 import com.company.orderapi.domain.repository.CustomerRepository;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
@@ -25,6 +27,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * profile turns all of it off (see application-prod.yml).
  */
 @SpringBootTest
+@TestPropertySource(properties = {
+        "integration.database.tag=SqlLoggingIntegrationTest",
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false"
+})
 @Testcontainers
 class SqlLoggingIntegrationTest {
 

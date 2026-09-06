@@ -52,6 +52,13 @@ spring:
         # fetch size). Helps large result sets, independent of batch fetching.
         jdbc:
           fetch_size: 100
+        # PR #16 - second-level cache (JCache + Ehcache). Only entities marked
+        # @Cacheable (selective mode) are cached.
+        cache:
+          use_second_level_cache: true
+          region:
+            factory_class: jcache
+        jakarta.persistence.sharedCache.mode: ENABLE_SELECTIVE
 
 server:
   # SERVER_PORT env var overridable - useful for tests / running multiple instances.

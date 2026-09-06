@@ -1,5 +1,7 @@
 package com.company.orderapi.integration;
 
+import org.springframework.test.context.TestPropertySource;
+
 import com.company.orderapi.domain.Product;
 import com.company.orderapi.domain.repository.ProductRepository;
 import com.company.orderapi.domain.service.ProductInventoryService;
@@ -35,6 +37,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Testcontainers
 @SpringBootTest
+@TestPropertySource(properties = {
+        "integration.database.tag=LockingPerformanceComparisonTest",
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false"
+})
 class LockingPerformanceComparisonTest {
 
     private static final int INCREMENTS = 40;

@@ -91,6 +91,21 @@
             <artifactId>spring-retry</artifactId>
         </dependency>
 
+        <!--
+          PR #16 - Hibernate second-level cache via JCache (Ehcache provider).
+          hibernate-jcache is the Hibernate integration; org.ehcache is the
+          javax.cache provider implementation (version managed by Spring Boot).
+        -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-jcache</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ehcache</groupId>
+            <artifactId>ehcache</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- Actuator: /actuator/health etc. for local dev and later K8s probes. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
