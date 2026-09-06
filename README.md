@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #10 (Auditing) — merged ✅ (next: PR #11)**
+> **Status: PR #11 (Custom Queries) — merged ✅ (next: PR #12)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -540,6 +540,41 @@ zero hand-written timestamp code.
   JPA and (column semantics) level.
 - **No audit columns on the pure join table** `product_categories` — it has no
   entity and therefore no auditor.
+
+---
+
+## PR #11 — Custom Queries
+
+**Aspect learned:** `@Query` — JPQL, native SQL, pagination and SpEL-driven
+dynamic filters.
+
+### Deliverables
+- [x] `OrderRepository` with the four `@Query` flavours
+- [x] Complex JPQL (predicates + ordering) — `findRecentOrdersByCustomer`
+- [x] Native SQL with interface projection — `findCustomerSpendNative`
+      (`GROUP BY` + `SUM`, alias → getter)
+- [x] `@Query` + `Pageable`/`Page` — `findOrdersPaged`
+- [x] SpEL expressions (`:#{#range.minTotal()}`) with null-safe optional
+      predicates — `findByAmountRange`
+- [x] `CustomQueryIntegrationTest` covering every query style
+
+### Key questions answered
+1. **When to use `@Query` vs. method naming?** Method naming is great for simple
+   lookups; `@Query` takes over the moment you need joins, aggregates, native
+   SQL, or anything a method name cannot express (or should not: very long
+   derived names are unreadable).
+2. **What is JPQL and how is it different from SQL?** JPQL queries the *entity
+   model* (`o.customer.id`, `o.totalAmount`) and is database-agnostic; SQL
+   queries tables/columns and is dialect-specific. Prefer JPQL; reach for native
+   SQL only for DB-specific power (here: `GROUP BY`/`SUM` projection demo).
+3. **When to use native SQL vs. JPQL?** Native SQL for aggregation/reporting or
+   vendor features; JPQL for everything object-graph related. Native projection
+   gotcha hit during this PR: interface-projection getters bind to **column
+   aliases**, so `total_spent` did NOT bind to `getTotalSpent()` until aliased
+   as `totalSpent`.
+4. **Bonus (SpEL):** `:#{#range.minTotal()}` dereferences a method-argument
+   object inside JPQL; paired with `is null or ...` guards it makes predicates
+   optional — one method, four filter combinations, zero SQL concatenation.
 
 ---
 
