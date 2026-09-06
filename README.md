@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #22 (REST Controllers) — merged ✅ (next: PR #23)**
+> **Status: PR #23 (Validation) — merged ✅ (next: PR #24)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -887,6 +887,33 @@ codes, and the payload controls (`fields`, `include`) that keep APIs flexible.
 3. **HTTP methods → CRUD?** POST=create (201 + Location), GET=read,
    PUT=full replace, PATCH=partial, DELETE=remove (204). Conditional requests
    use ETag/If-Match to prevent lost updates (412 when stale).
+
+---
+
+## PR #23 — Validation
+
+**Aspect learned:** Bean Validation — annotations, custom constraints, cross-field
+rules and validation groups.
+
+### Deliverables
+- [x] `@NotNull` / `@Size` / `@Email` on the request DTOs
+- [x] Custom constraint `@ValidStock` (class-level product sanity)
+- [x] Custom cross-field constraint `@ValidOrderRequest` (duplicate products,
+      quantity bounds)
+- [x] Validation groups `Create` / `Update` (create stricter than update)
+- [x] Controllers wired with `@Valid` / `@Validated(Create|Update.class)`
+- [x] `ValidationIntegrationTest` — 400s for each rule
+
+### Key questions answered
+1. **How does Bean Validation work?** Constraints on request records are
+   checked automatically by Spring MVC before the controller runs; violations
+   produce 400 with field-level details.
+2. **When custom validators?** When the rule spans multiple fields (whole
+   `OrderRequest`), needs the whole object (stock sanity), or needs DB access —
+   write a `ConstraintValidator` behind a custom annotation.
+3. **What are validation groups for?** The SAME request type is validated
+   differently per operation: creation requires `fullName.length() >= 2`, while
+   an update (already-valid data) is lenient — proven by the test.
 
 ---
 

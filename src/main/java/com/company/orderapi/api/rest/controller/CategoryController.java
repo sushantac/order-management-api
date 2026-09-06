@@ -2,6 +2,8 @@ package com.company.orderapi.api.rest.controller;
 
 import com.company.orderapi.domain.Category;
 import com.company.orderapi.domain.repository.CategoryRepository;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -45,7 +47,7 @@ public class CategoryController {
     }
 
     @PostMapping
-    public ResponseEntity<CategoryView> create(@RequestBody CategoryRequest request) {
+    public ResponseEntity<CategoryView> create(@Valid @RequestBody CategoryRequest request) {
         Category category = new Category(request.name());
         category.setDescription(request.description());
         categories.saveAndFlush(category);
@@ -55,7 +57,7 @@ public class CategoryController {
     }
 
     @PutMapping("/{id}")
-    public CategoryView update(@PathVariable Long id, @RequestBody CategoryRequest request) {
+    public CategoryView update(@PathVariable Long id, @Valid @RequestBody CategoryRequest request) {
         Category category = categories.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown category " + id));
         category.setDescription(request.description());
@@ -69,7 +71,7 @@ public class CategoryController {
         return ResponseEntity.noContent().build();
     }
 
-    public record CategoryRequest(String name, String description) {
+    public record CategoryRequest(@NotBlank String name, String description) {
     }
 
     public record CategoryView(Long id, String name, String description) {

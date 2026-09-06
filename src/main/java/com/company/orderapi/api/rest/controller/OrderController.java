@@ -8,6 +8,7 @@ import com.company.orderapi.domain.OrderStatus;
 import com.company.orderapi.domain.repository.OrderRepository;
 import com.company.orderapi.domain.service.OrderService;
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
@@ -52,7 +53,7 @@ public class OrderController {
 
     @PostMapping
     @Transactional
-    public ResponseEntity<OrderResponse> create(@RequestBody OrderRequest request) {
+    public ResponseEntity<OrderResponse> create(@Valid @RequestBody OrderRequest request) {
         Order order = orderService.placeOrder(request.customerId(),
                 request.items().stream()
                         .map(i -> new OrderService.OrderLine(i.productId(), i.quantity()))
@@ -64,7 +65,7 @@ public class OrderController {
 
     @PostMapping("/bulk")
     @Transactional
-    public ResponseEntity<List<OrderResponse>> createBulk(@RequestBody List<OrderRequest> requests) {
+    public ResponseEntity<List<OrderResponse>> createBulk(@Valid @RequestBody List<OrderRequest> requests) {
         List<OrderResponse> created = requests.stream()
                 .map(r -> OrderMapper.toOrderResponse(orderService.placeOrder(r.customerId(),
                         r.items().stream()
