@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #17 (DTO Projections) — merged ✅ (next: PR #18)**
+> **Status: PR #18 (JPA Events & Listeners) — merged ✅ (next: PR #19)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -750,6 +750,32 @@ entities for read/list views.
 3. **Interface vs class projections?** Interfaces are convenient when the data
    is simple column selection; class (constructor) expressions are needed for
    expressions/aggregates (`GROUP BY`, `SUM`) and give you a real, testable type.
+
+---
+
+## PR #18 — JPA Events & Listeners
+
+**Aspect learned:** `@EntityListeners` — external classes reacting to entity
+lifecycle events, decoupled from both the entity and the service layer.
+
+### Deliverables
+- [x] `AuditingEntityListener` for auditing (already on `BaseEntity`)
+- [x] Custom `OrderBusinessListener` for business rules
+- [x] `@PostPersist` event-publishing hook on Order (observable counter)
+- [x] `EntityListenerIntegrationTest` verifying listener behaviour + composition
+
+### Key questions answered
+1. **What are entity listeners?** Plain classes with `@PrePersist`/`@PostLoad`/…
+   methods, registered via `@EntityListeners`. They run alongside lifecycle
+   callbacks and other listeners.
+2. **When to use `@EntityListeners`?** When the reaction is a cross-cutting
+   concern you do not want inside the entity: event publishing (PostPersist),
+   validation on update (PreUpdate), logging. Reuse one listener across
+   entities instead of copying callbacks.
+3. **Listeners vs lifecycle callbacks?** Callbacks live inside the entity class
+   (order number generation stays there); listeners externalize shared concerns
+   and keep the entity lean. They compose — this PR proves the inherited
+   auditing listener AND the custom Order listener both fire on one insert.
 
 ---
 
