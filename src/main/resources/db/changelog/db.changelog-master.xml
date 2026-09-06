@@ -29,5 +29,7 @@
     <include file="v1.0/03_add_audit_columns.sql" relativeToChangelogFile="true"/>
     <!-- PR #13: order_number populated by a @PrePersist callback. -->
     <include file="v1.0/04_add_order_number.sql" relativeToChangelogFile="true"/>
+    <!-- PR #19: append-only event store for event sourcing. -->
+    <include file="v1.0/05_create_event_store.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>
