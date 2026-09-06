@@ -1,26 +1,41 @@
 # ============================================================================
-# PR #1 - Project Setup - basic configuration.
+# PR #2 - Database wiring (PostgreSQL + Liquibase).
 # ----------------------------------------------------------------------------
-# No database yet (by design):
-#   - docker-compose.yml + PostgreSQL  -> PR #2
-#   - Liquibase changelogs             -> PR #2
-#   - JPA entities / repositories      -> PR #3
-#
-# Until then the DB-related auto-configurations are excluded so the app
-# starts (and the contextLoads test passes) WITHOUT a running database.
-# PR #2 will remove these exclusions and wire the real PostgreSQL DataSource.
+# PR #1 deliberately excluded DB auto-configuration. PR #2 introduces the real
+# schema and therefore removes those exclusions:
+#   - docker-compose.yml runs PostgreSQL 16 locally.
+#   - Liquibase owns the schema (db/changelog/db.changelog-master.xml);
+#     Hibernate never creates or updates it (ddl-auto: validate).
+# Every value is overridable via environment variables so the same file works
+# for local dev (docker-compose), integration tests (Testcontainers) and CI.
 # ============================================================================
 spring:
   application:
     name: order-management-api
 
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
-      - org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration
+  # --- PostgreSQL connection (dev defaults match docker-compose.yml) --------
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:orderdb}
+    username: ${DB_USER:order}
+    password: ${DB_PASSWORD:order}
+    hikari:
+      pool-name: OrderApiHikariPool
+      maximum-pool-size: 10
+
+  # --- Schema versioning with Liquibase --------------------------------------
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Liquibase owns the schema. 'validate' (from PR #3 on) only confirms the
+      # JPA entities match the DB - it never modifies anything.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
 
 server:
   # SERVER_PORT env var overridable - useful for tests / running multiple instances.
@@ -33,7 +48,7 @@ management:
         include: health, info, metrics
   endpoint:
     health:
-      # Visible in dev; switch to never/on-custom in production (PR later).
+      # Detailed health is handy in dev; restrict before production (later PR).
       show-details: always
 
 logging:

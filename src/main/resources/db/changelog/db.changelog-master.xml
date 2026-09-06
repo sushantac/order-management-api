@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  PR #2 - Database Schema with Foreign Keys
+
+  Liquibase changelog master: the single entry point for every schema change.
+  Golden rules taught here:
+    1. NEVER edit a changeset that has already run in any environment - the
+       stored checksum would mismatch and Liquibase refuses to start.
+       Add a NEW changeset (or a new included file) instead.
+    2. Every environment (dev/CI/prod) gets the schema from this file, so the
+       database is always reproducible from git. That is the DB part of GitOps.
+  ============================================================================
+-->
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+      relativeToChangelogFile: resolve "v1.0/..." against THIS file's folder
+      (db/changelog), i.e. db/changelog/v1.0/01_create_tables.sql on the classpath.
+    -->
+    <include file="v1.0/01_create_tables.sql" relativeToChangelogFile="true"/>
+
+</databaseChangeLog>
