@@ -29,13 +29,20 @@ spring:
 
   jpa:
     open-in-view: false
+    # PR #15 - show every JPA query in the logs (see logging levels below).
+    show-sql: true
     hibernate:
       # Liquibase owns the schema. 'validate' only confirms the JPA entities
       # match the DB - it never modifies anything.
       ddl-auto: validate
     properties:
       hibernate:
+        # Pretty-print the SQL so it is actually readable.
         format_sql: true
+        # PR #15 - comment each statement with the code path that generated it.
+        use_sql_comments: true
+        # PR #15 - session/query statistics (also used by the tests).
+        generate_statistics: true
         # PR #7 - batch fetching knobs.
         # default_batch_fetch_size: when a lazy collection/many-to-one IS loaded,
         # Hibernate loads up to this many owners in ONE "in (...)" query instead
@@ -65,3 +72,8 @@ logging:
     root: INFO
     # Our own classes log at DEBUG during the learning journey.
     com.company.orderapi: DEBUG
+    # PR #15 - SQL debugging: statement + pretty print, parameter bindings,
+    # and session statistics. See application-prod.yml (all disabled there).
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.stat: DEBUG
