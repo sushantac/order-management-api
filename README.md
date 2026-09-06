@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #3 (JPA Entities with Foreign Key Mappings) — awaiting review.**
+> **Status: PR #4 (Cascading Strategies) — awaiting review.**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -23,7 +23,7 @@ auditing, security, event-driven, Kubernetes, ...).
 
 ---
 
-## Project Structure (after PR #3)
+## Project Structure (after PR #4)
 
 ```
 order-management-api/
@@ -36,11 +36,12 @@ order-management-api/
     ├── main/
     │   ├── java/com/company/orderapi/
     │   │   ├── OrderManagementApiApplication.java
-    │   │   └── domain/                       # JPA entities + enums (PR #3)
+    │   │   └── domain/                       # JPA entities + enums
     │   │       ├── BaseEntity.java
     │   │       ├── Customer.java / Address.java / Order.java
     │   │       ├── OrderItem.java / Product.java / Category.java
-    │   │       └── AddressType.java / OrderStatus.java
+    │   │       ├── Payment.java              # added PR #4 (Order 1:1)
+    │   │       └── enums: AddressType / OrderStatus / PaymentMethod / PaymentStatus
     │   └── resources/
     │       ├── application.yml
     │       └── db/changelog/                 # Liquibase schema versioning
@@ -51,7 +52,8 @@ order-management-api/
         ├── OrderManagementApiApplicationTests.java   # contextLoads smoke test
         └── integration/
             ├── DatabaseSchemaIntegrationTest.java    # verifies Liquibase output
-            └── JpaEntityMappingIntegrationTest.java  # FK write/read round-trips
+            ├── JpaEntityMappingIntegrationTest.java  # FK write/read round-trips
+            └── JpaCascadingIntegrationTest.java      # cascade behaviour (PR #4)
 ```
 
 Future PRs extend this into the spec's target package tree:
@@ -240,6 +242,56 @@ curl http://localhost:8080/actuator/health
 - **Text columns mapped with `columnDefinition = "text"`** to match the schema.
 - **`ddl-auto: validate` now has teeth**: Hibernate fails startup if any entity
   mapping disagrees with the Liquibase schema — the DB stays the source of truth.
+
+---
+
+## PR #4 — Cascading Strategies
+
+**Aspect learned:** `CascadeType` — which operations should propagate from a
+parent entity through its relationships, and how to choose per relationship.
+
+### Deliverables in this PR (spec checklist)
+- [x] `CascadeType.PERSIST` on Customer → Addresses
+- [x] `CascadeType.ALL` on Order → OrderItems  (activates the orphan-removal DELETE)
+- [x] `CascadeType.ALL` on Order → Payment  (new `Payment` entity, Order 1:1)
+- [x] `CascadeType.MERGE` on Product → Categories
+- [x] `CascadeType.PERSIST` on Customer → Orders
+- [x] `JpaCascadingIntegrationTest` — cascade behaviour verified on real Postgres
+
+### Key questions answered
+
+1. **What is JPA cascading and why use it?**
+   Cascading forwards an EntityManager operation (persist/merge/remove/refresh/
+   detach) from a parent to its associated entities. Used deliberately, it turns
+   "persist the whole new order graph" into one `persist(customer)`. Used
+   blindly (`ALL` everywhere), it makes deletes/merges unpredictable — hence
+   per-relationship, per-spec choices.
+
+2. **What are the different `CascadeType` options?**
+   - `PERSIST` — new children are saved with the parent.
+   - `MERGE` — detached children are re-attached when the parent is merged.
+   - `REMOVE` — children are deleted with the parent.
+   - `ALL` — every operation above (and refresh/detach) propagates.
+   - plus `REFRESH` / `DETACH` and the separate `orphanRemoval` flag.
+
+3. **When should you use `CascadeType.ALL` vs. specific types?**
+   `ALL` only where the child's lifecycle is *owned* by the parent — Order
+   items/payment can't outlive their order. `PERSIST` alone on Customer →
+   Addresses/Orders keeps deletions local (customers are not deleted by accident
+   through a graph op). `MERGE` on Product → Categories matches the many-to-many
+   semantics: categories are shared, so we merge references but never cascade
+   removes into shared data.
+
+### Key decisions
+- **Payment entity introduced here** because the spec's cascade list requires
+  `Order → Payment`; it maps the `payments` table from PR #2 (Order owns the
+  1:1 inverse, `Payment.order` carries the unique `order_id`).
+- **`orphanRemoval` now works**: PR #3 empirically showed Hibernate issues the
+  orphan DELETE only once the association carries a cascade — `ALL` on
+  Order→OrderItems provides it, and `JpaCascadingIntegrationTest` proves the
+  rows are deleted.
+- **Tests flush only the root** and assert child rows appeared on disk — the
+  strongest proof a cascade fires.
 
 ---
 

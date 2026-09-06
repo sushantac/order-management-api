@@ -1,5 +1,6 @@
 package com.company.orderapi.domain;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -40,7 +41,12 @@ public class Product extends BaseEntity {
     @Column(name = "stock_quantity", nullable = false)
     private int stockQuantity;
 
-    @ManyToMany(fetch = FetchType.LAZY)
+    /**
+     * PR #4: {@code cascade = CascadeType.MERGE} - merging a product re-attaches
+     * (merges) its categories, so a detached category reference never produces
+     * a duplicate row.
+     */
+    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
     @JoinTable(
             name = "product_categories",
             joinColumns = @JoinColumn(name = "product_id"),

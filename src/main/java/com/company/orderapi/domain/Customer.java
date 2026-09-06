@@ -1,5 +1,6 @@
 package com.company.orderapi.domain;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -37,14 +38,20 @@ public class Customer extends BaseEntity {
     /**
      * Bidirectional one-to-many; the owning side is {@code Address.customer}
      * which declares the actual {@code customer_id} join column.
+     * PR #4: {@code cascade = PERSIST} - saving a new customer saves its
+     * address book in the same flush.
      */
-    @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY,
+            cascade = CascadeType.PERSIST)
     private List<Address> addresses = new ArrayList<>();
 
     /**
      * Bidirectional one-to-many; the owning side is {@code Order.customer}.
+     * PR #4: {@code cascade = PERSIST} - saving a new customer saves its orders
+     * in the same flush (items/payment then follow via Order's own cascade).
      */
-    @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY,
+            cascade = CascadeType.PERSIST)
     private List<Order> orders = new ArrayList<>();
 
     protected Customer() {
