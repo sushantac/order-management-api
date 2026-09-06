@@ -1,0 +1,12 @@
+# ============================================================================
+# PR #14 - PROD profile: the schema is ALWAYS owned by Liquibase.
+# ----------------------------------------------------------------------------
+# 'validate' makes Hibernate compare entity metadata against the real database
+# at startup and FAIL the application on any mismatch - drift can never ship
+# silently. 'update' is forbidden here because a production outage caused by a
+# surprise DDL is not acceptable.
+# ============================================================================
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
