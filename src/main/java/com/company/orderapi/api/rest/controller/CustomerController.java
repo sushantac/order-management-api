@@ -2,7 +2,9 @@ package com.company.orderapi.api.rest.controller;
 
 import com.company.orderapi.api.dto.CustomerRequest;
 import com.company.orderapi.api.dto.CustomerResponse;
+import com.company.orderapi.api.dto.Create;
 import com.company.orderapi.api.dto.OrderMapper;
+import com.company.orderapi.api.dto.Update;
 import com.company.orderapi.domain.Customer;
 import com.company.orderapi.domain.repository.CustomerRepository;
 import org.springframework.data.domain.Page;
@@ -10,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -100,7 +103,8 @@ public class CustomerController {
     }
 
     @PostMapping
-    public ResponseEntity<CustomerResponse> create(@RequestBody CustomerRequest request) {
+    public ResponseEntity<CustomerResponse> create(@Validated(Create.class)
+                                                   @RequestBody CustomerRequest request) {
         Customer customer = customers.save(new Customer(request.email(), request.fullName()));
         customer.setPhoneNumber(request.phoneNumber());
         customers.flush();
@@ -110,7 +114,8 @@ public class CustomerController {
     }
 
     @PutMapping("/{id}")
-    public CustomerResponse update(@PathVariable Long id, @RequestBody CustomerRequest request) {
+    public CustomerResponse update(@PathVariable Long id, @Validated(Update.class)
+                                   @RequestBody CustomerRequest request) {
         Customer customer = customers.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown customer " + id));
         customer.setEmail(request.email());

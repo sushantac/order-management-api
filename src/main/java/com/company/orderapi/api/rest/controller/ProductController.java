@@ -5,6 +5,7 @@ import com.company.orderapi.api.dto.ProductRequest;
 import com.company.orderapi.api.dto.ProductResponse;
 import com.company.orderapi.domain.Product;
 import com.company.orderapi.domain.repository.ProductRepository;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -45,7 +46,7 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<ProductResponse> create(@RequestBody ProductRequest request) {
+    public ResponseEntity<ProductResponse> create(@Valid @RequestBody ProductRequest request) {
         Product product = products.saveAndFlush(new Product(
                 request.name(), request.price(), request.stockQuantity()));
         product.setDescription(request.description());
@@ -56,7 +57,7 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public ProductResponse update(@PathVariable Long id, @RequestBody ProductRequest request) {
+    public ProductResponse update(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
         Product product = products.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown product " + id));
         product.setName(request.name());
