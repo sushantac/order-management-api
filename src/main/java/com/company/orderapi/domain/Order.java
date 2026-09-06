@@ -1,5 +1,6 @@
 package com.company.orderapi.domain;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -8,6 +9,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
@@ -58,16 +60,24 @@ public class Order extends BaseEntity {
     private Address billingAddress;
 
     /**
-     * Order lines. {@code mappedBy = "order"} means OrderItem owns the FK;
-     * {@code orphanRemoval = true} declares that an item removed from this
-     * list must never survive as an "orphan" row (no item without its order).
+     * Order lines. {@code mappedBy = "order"} means OrderItem owns the FK.
      *
-     * <p>Verified behaviour (Hibernate 6.4 / Spring Boot 3.2.1): the DELETE
-     * for an orphaned item is actually issued once the association carries a
-     * cascade (ALL/REMOVE) - which PR #4 adds together with the cascade tests.
+     * <p>PR #4 adds {@code cascade = CascadeType.ALL}: persisting (or removing)
+     * an Order carries its items, and - as verified in PR #3 - the cascade is
+     * what makes {@code orphanRemoval = true} actually DELETE a removed item.
      */
-    @OneToMany(mappedBy = "order", fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "order", fetch = FetchType.LAZY,
+            cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
+
+    /**
+     * The (optional, 1:1) payment for this order. Inverse side: {@link Payment}
+     * owns the {@code order_id} column. {@code cascade = CascadeType.ALL}
+     * (PR #4) makes the payment lifecycle follow the order's lifecycle.
+     */
+    @OneToOne(mappedBy = "order", fetch = FetchType.LAZY,
+            cascade = CascadeType.ALL, optional = true)
+    private Payment payment;
 
     protected Order() {
         // for JPA
@@ -84,6 +94,18 @@ public class Order extends BaseEntity {
     public void addItem(OrderItem item) {
         items.add(item);
         item.setOrder(this);
+    }
+
+    /** Links both sides of the Order-Payment 1:1 at once. */
+    public void setPayment(Payment payment) {
+        this.payment = payment;
+        if (payment != null) {
+            payment.setOrder(this);
+        }
+    }
+
+    public Payment getPayment() {
+        return payment;
     }
 
     public Customer getCustomer() {
