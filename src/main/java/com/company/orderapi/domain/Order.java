@@ -3,6 +3,7 @@ package com.company.orderapi.domain;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
@@ -12,6 +13,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import com.company.orderapi.domain.listener.OrderBusinessListener;
 import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
@@ -38,6 +40,7 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "orders")
+@EntityListeners(OrderBusinessListener.class)
 public class Order extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
