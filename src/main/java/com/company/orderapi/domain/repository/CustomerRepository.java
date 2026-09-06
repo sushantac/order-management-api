@@ -3,6 +3,7 @@ package com.company.orderapi.domain.repository;
 import com.company.orderapi.domain.Customer;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
@@ -22,8 +23,13 @@ import java.util.List;
  *   <li>{@code findAllWithAddressesNamedEntityGraph()} - reusable
  *       {@code @NamedEntityGraph} declared on the entity.</li>
  * </ul>
+ *
+ * <p>PR #12 - {@link JpaSpecificationExecutor} adds {@code findAll(Specification)},
+ * {@code count(Specification)} and friends for dynamic, type-safe queries; the
+ * building blocks live in {@link CustomerSpecifications}.
  */
-public interface CustomerRepository extends JpaRepository<Customer, Long> {
+public interface CustomerRepository extends JpaRepository<Customer, Long>,
+        JpaSpecificationExecutor<Customer> {
 
     /**
      * Fix 1 - JPQL JOIN FETCH.
