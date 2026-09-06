@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #4 (Cascading Strategies) — awaiting review.**
+> **Status: PR #5 (Fetch Types) — awaiting review.**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -292,6 +292,40 @@ parent entity through its relationships, and how to choose per relationship.
   rows are deleted.
 - **Tests flush only the root** and assert child rows appeared on disk — the
   strongest proof a cascade fires.
+
+---
+
+## PR #5 — Fetch Types (LAZY vs EAGER)
+
+**Aspect learned:** fetch strategies — when JPA loads a related entity/collection
+relative to its owner, and why production code defaults to LAZY.
+
+### Deliverables in this PR
+- [x] Explicit `FetchType.LAZY` on every association (spec checklist):
+  Customer→Addresses, Order→OrderItems, Order→Customer, Product→Categories,
+  OrderItem→Product (+ the rest of the graph for consistency)
+- [x] Hibernate SQL logging for fetch behaviour (test-scoped `show-sql`)
+- [x] `FetchTypeIntegrationTest` — LAZY vs EAGER differences proven with
+  `PersistenceUnitUtil.isLoaded` and real JDBC statement counts
+
+### Key questions answered
+
+1. **What is the difference between LAZY and EAGER?**
+   EAGER loads the association in the *same* query that loads the owner;
+   LAZY defers it until the association is actually touched (its own SELECT).
+   EAGER sounds convenient but composes terribly — one "load customer" can
+   silently become a deep graph of joins/selects you never asked for.
+
+2. **Why default to LAZY in production?**
+   You load what you need, when you need it — and, crucially, you *choose*
+   explicitly (via fetch joins / entity graphs, PR #6) what gets loaded per
+   use case. LAZY also keeps sessions short and prevents whole-graph pulls.
+
+3. **What is the N+1 problem and how does fetch type affect it?**
+   Naive LAZY traversal issues 1 query for the list + N queries for N children
+   (demonstrated & counted in the test: exactly `1 + customers.size()`).
+   EAGER would move the same explosion into the initial query. Neither is the
+   fix — deliberate fetching (next PR) is.
 
 ---
 
