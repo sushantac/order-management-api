@@ -1,0 +1,12 @@
+# ============================================================================
+# PR #14 - DEV profile: let Hibernate auto-update the schema for experiments.
+# ----------------------------------------------------------------------------
+# USE WITH CARE. 'update' only ADDS what Hibernate knows about - it never drops
+# stale columns/tables, and it can fight Liquibase (the schema source of truth).
+# Ideal for throwaway local databases; NEVER for shared/prod environments.
+# Tests and CI intentionally run the DEFAULT profile (ddl-auto: validate).
+# ============================================================================
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update

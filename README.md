@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #13 (Entity Lifecycle Callbacks) — merged ✅ (next: PR #14)**
+> **Status: PR #14 (Schema Generation & Validation) — merged ✅ (next: PR #15)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -635,6 +635,33 @@ hooks that run around the persistence lifecycle inside the entity itself.
    one-time logic.
 4. **Gotcha surfaced:** the DB's `ON DELETE CASCADE` would silently delete a
    customer's orders — the `@PreRemove` callback is the *business* rule on top.
+
+---
+
+## PR #14 — Schema Generation & Validation
+
+**Aspect learned:** `spring.jpa.hibernate.ddl-auto` options and why the schema
+should never be self-managed in production.
+
+### Deliverables
+- [x] `ddl-auto: validate` in production (`application-prod.yml` + default)
+- [x] `ddl-auto: update` in development (`application-dev.yml`, clearly flagged)
+- [x] `SchemaValidationIntegrationTest` — entity model ⇄ real schema contract
+- [x] Liquibase schema validation (startup + existing `DatabaseSchemaIntegrationTest`)
+
+### Key questions answered
+1. **What is `ddl-auto` and what options exist?** `none` (do nothing),
+   `validate` (fail if entities ≠ DB), `update` (add missing objects),
+   `create`/`create-drop` (drop & recreate; testing only).
+2. **Why `validate` in production?** Drift is caught at startup, before any
+   request — no surprise DDL, no divergence between app and DB. Because
+   Liquibase owns the schema, `validate` is a free integrity gate.
+3. **What is the danger of `update` in production?** Hibernate only *adds*
+   things it knows about: it never drops stale columns, can generate wrong DDL
+   for non-trivial changes (renames look like drop+add), and two app versions
+   can fight over the schema mid-deploy.
+4. **How we use profiles:** default & `prod` = `validate`; `dev` = `update`
+   (throwaway local databases only). Tests always run `validate`.
 
 ---
 
