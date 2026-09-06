@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #7 (Batch Fetching) — awaiting review.**
+> **Status: PR #8 (Optimistic Locking) — awaiting review.**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -36,24 +36,33 @@ order-management-api/
     ├── main/
     │   ├── java/com/company/orderapi/
     │   │   ├── OrderManagementApiApplication.java
-    │   │   └── domain/                       # JPA entities + enums
-    │   │       ├── BaseEntity.java
-    │   │       ├── Customer.java / Address.java / Order.java
-    │   │       ├── OrderItem.java / Product.java / Category.java
-    │   │       ├── Payment.java              # added PR #4 (Order 1:1)
-    │   │       └── enums: AddressType / OrderStatus / PaymentMethod / PaymentStatus
+    │   │   ├── config/RetryConfig.java        # @EnableRetry (PR #8)
+    │   │   ├── domain/                       # JPA entities + enums
+    │   │   │   ├── BaseEntity.java           # id + @Version (PR #8)
+    │   │   │   ├── Customer.java / Address.java / Order.java
+    │   │   │   ├── OrderItem.java / Product.java / Category.java
+    │   │   │   ├── Payment.java              # added PR #4 (Order 1:1)
+    │   │   │   ├── repository/               # Spring Data repositories
+    │   │   │   │   ├── CustomerRepository.java (PR #6) / ProductRepository.java (PR #8)
+    │   │   │   ├── service/ProductStockService.java  # @Retryable stock (PR #8)
+    │   │   │   └── enums: AddressType / OrderStatus / PaymentMethod / PaymentStatus
     │   └── resources/
     │       ├── application.yml
     │       └── db/changelog/                 # Liquibase schema versioning
     │           ├── db.changelog-master.xml
     │           └── v1.0/
-    │               └── 01_create_tables.sql  # 8 tables + FKs + indexes
+    │               ├── 01_create_tables.sql        # 8 tables + FKs + indexes
+    │               └── 02_add_version_columns.sql  # @Version columns (PR #8)
     └── test/java/com/company/orderapi/
         ├── OrderManagementApiApplicationTests.java   # contextLoads smoke test
         └── integration/
             ├── DatabaseSchemaIntegrationTest.java    # verifies Liquibase output
             ├── JpaEntityMappingIntegrationTest.java  # FK write/read round-trips
-            └── JpaCascadingIntegrationTest.java      # cascade behaviour (PR #4)
+            ├── JpaCascadingIntegrationTest.java      # cascade behaviour (PR #4)
+            ├── FetchTypeIntegrationTest.java         # LAZY semantics (PR #5)
+            ├── NPlusOneDemoTest.java                 # N+1 fixes (PR #6)
+            ├── BatchFetchIntegrationTest.java        # batch fetching (PR #7)
+            └── OptimisticLockingTest.java            # 100 concurrent updates (PR #8)
 ```
 
 Future PRs extend this into the spec's target package tree:
@@ -400,6 +409,50 @@ Loading an `Order` triggers its optional inverse `@OneToOne payment`: Hibernate
 cannot lazy-proxy a *nullable* one-to-one, so it checks the payments table per
 order. The batch test isolates collection batching (addresses) for this reason —
 a real-world trap to remember when modelling 1:1s.
+
+---
+
+## PR #8 — Optimistic Locking
+
+**Aspect learned:** `@Version` + optimistic locking — prevent lost updates in
+concurrent scenarios without holding database locks.
+
+### Deliverables in this PR
+- [x] `@Version` on **every** entity (declared once in `BaseEntity`)
+- [x] `version` column added to **all 8 tables** (Liquibase `02_add_version_columns.sql`)
+- [x] `@Retryable` (+ `@Backoff`) for `OptimisticLockingFailureException`
+      (`spring-retry` + `starter-aop`, `RetryConfig`, `ProductStockService`)
+- [x] `OptimisticLockingTest` — **100 concurrent** stock decrements, zero lost updates
+
+### Key questions answered
+
+1. **What is optimistic locking and how does it work?**
+   Every row carries a `version`. An UPDATE includes
+   `WHERE id = ? AND version = <value the transaction read>` and increments
+   version. If another transaction committed first, 0 rows match → the write is
+   rejected. No locks are held while the transaction works — conflicts are
+   *detected at write time*, not prevented up front.
+
+2. **Why use `@Version`?**
+   One annotation in `BaseEntity` gives every entity a safe concurrent-update
+   guarantee. Compare that with hand-rolled `SELECT ... FOR UPDATE` (pessimistic
+   locking, PR #9): optimistic locking scales better for read-heavy workloads
+   and never blocks readers.
+
+3. **What is the difference between optimistic and pessimistic locking?**
+   Optimistic assumes conflicts are rare: verify-then-write, retry on failure.
+   Pessimistic assumes conflicts are likely: lock the row up front and exclude
+   everyone else until commit. Optimistic = better concurrency + deadlock-free,
+   at the cost of occasional retries on hot rows — which `@Retryable` absorbs.
+
+### Key decisions
+- **One `@Version` in `BaseEntity`** rather than on each entity — DRY, and the
+  version column exists in every table because BaseEntity drives all of them.
+- **Liquibase adds `version BIGINT NOT NULL DEFAULT 0`** to the existing tables —
+  never edit the original changesets; a new one migrates the schema.
+- **Retry, don't serialise**: the 100-worker test succeeds because only a few
+  calls collide per moment and `@Retryable(maxAttempts = 50)` re-reads the
+  newest version. Business rejections (insufficient stock) are NOT retried.
 
 ---
 

@@ -23,5 +23,7 @@
       (db/changelog), i.e. db/changelog/v1.0/01_create_tables.sql on the classpath.
     -->
     <include file="v1.0/01_create_tables.sql" relativeToChangelogFile="true"/>
+    <!-- PR #8: optimistic locking needs a version column on every table. -->
+    <include file="v1.0/02_add_version_columns.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>
