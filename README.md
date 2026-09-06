@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #21 (DTOs — Java Records) — merged ✅ (next: PR #22)**
+> **Status: PR #22 (REST Controllers) — merged ✅ (next: PR #23)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -859,6 +859,34 @@ records.
 3. **How do you map entities to DTOs?** Explicitly (`OrderMapper`): one
    readable mapping per type, no reflection/magic, and the mapper doubles as
    documentation of exactly what the API exposes.
+
+---
+
+## PR #22 — REST Controllers
+
+**Aspect learned:** REST API design — resourceful URLs, correct verbs/status
+codes, and the payload controls (`fields`, `include`) that keep APIs flexible.
+
+### Deliverables
+- [x] `CustomerController`/`ProductController`/`CategoryController` CRUD
+- [x] `OrderController`: POST `/orders`, GET list/detail, bulk
+      POST `/orders/bulk`
+- [x] Pagination + sorting (`Pageable`/`Sort`)
+- [x] Field filtering `?fields=` & resource inclusion `?include=`
+      (`GET /customers/{id}/view`)
+- [x] ETag on order GET + `If-Match` preconditioned DELETE (412 on staleness)
+- [x] PATCH via JSON Patch (`replace /status`)
+- [x] `RestControllerIntegrationTest` (MockMvc, deterministic payment fake)
+
+### Key questions answered
+1. **REST principles?** Resources as nouns (`/customers`, `/orders/{id}`),
+   verbs from HTTP methods, state in status codes, hypermedia in `Location`.
+2. **Designing endpoints?** Collection (`GET/POST /orders`) vs item
+   (`GET/PUT/PATCH/DELETE /orders/{id}`); actions become sub-resources or
+   documents (bulk = `POST /orders/bulk`).
+3. **HTTP methods → CRUD?** POST=create (201 + Location), GET=read,
+   PUT=full replace, PATCH=partial, DELETE=remove (204). Conditional requests
+   use ETag/If-Match to prevent lost updates (412 when stale).
 
 ---
 
