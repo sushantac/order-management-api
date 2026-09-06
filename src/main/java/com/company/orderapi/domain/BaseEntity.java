@@ -1,11 +1,19 @@
 package com.company.orderapi.domain;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.Version;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
 
 /**
  * Base class for every JPA entity (PR #3).
@@ -29,6 +37,7 @@ import jakarta.persistence.Version;
  * (entities in Sets / merging) revisits this topic.
  */
 @MappedSuperclass
+@EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
 
     @Id
@@ -38,6 +47,24 @@ public abstract class BaseEntity {
     @Version
     @Column(name = "version", nullable = false)
     private long version;
+
+    // --- PR #10: auditing (populated by AuditingEntityListener, see below) ---
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @CreatedBy
+    @Column(name = "created_by", nullable = false, updatable = false, length = 64)
+    private String createdBy;
+
+    @LastModifiedBy
+    @Column(name = "updated_by", nullable = false, length = 64)
+    private String updatedBy;
 
     protected BaseEntity() {
         // No-arg constructor required by JPA/Hibernate for instantiation.
@@ -51,6 +78,23 @@ public abstract class BaseEntity {
         return version;
     }
 
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public String getUpdatedBy() {
+        return updatedBy;
+    }
+
     // No public setId()/setVersion(): the database owns id generation, and
-    // Hibernate manages the version counter itself.
+    // Hibernate manages the version counter itself. Audit fields are owned by
+    // the AuditingEntityListener and have no setters either.
 }

@@ -25,5 +25,7 @@
     <include file="v1.0/01_create_tables.sql" relativeToChangelogFile="true"/>
     <!-- PR #8: optimistic locking needs a version column on every table. -->
     <include file="v1.0/02_add_version_columns.sql" relativeToChangelogFile="true"/>
+    <!-- PR #10: auditing columns on every entity table. -->
+    <include file="v1.0/03_add_audit_columns.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

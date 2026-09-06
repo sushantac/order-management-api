@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #9 (Pessimistic Locking) — awaiting review.**
+> **Status: PR #10 (Auditing) — merged ✅ (next: PR #11)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -503,6 +503,43 @@ locks so competing transactions **wait instead of abort**.
   service method is therefore a normal (writable-capable) transaction.
 - **Locks live until commit** — the blocking test holds a lock inside the
   transaction for 600 ms and proves a second writer waits ≥ the remainder.
+
+---
+
+## PR #10 — Auditing
+
+**Aspect learned:** `@CreatedDate` / `@LastModifiedDate` / `@CreatedBy` /
+`@LastModifiedBy` + `AuditorAware` — traceability for every data change with
+zero hand-written timestamp code.
+
+### Deliverables
+- [x] `@EnableJpaAuditing` configuration (`JpaAuditingConfig`)
+- [x] `AuditorAware<String>` bean (returns the current user)
+- [x] Audit fields on every entity (one declaration in `BaseEntity`,
+      `@EntityListeners(AuditingEntityListener.class)`)
+- [x] Liquibase `03_add_audit_columns.sql` — `created_at/updated_at/created_by/
+      updated_by` on the 7 entity tables
+- [x] `JpaAuditingIntegrationTest` — persist & update semantics verified
+
+### Key questions answered
+1. **How does JPA auditing work?** Spring Data's `AuditingEntityListener`
+   (registered on the mapped superclass) fills the `@*Date`/`@*By` fields on
+   `@PrePersist`/`@PreUpdate` using the `AuditingHandler`, which asks the
+   `AuditorAware` bean "who is the current user?".
+2. **Why audit?** created/updated + who — the minimum for compliance,
+   debugging and GDPR/audit trails, without sprinkling timestamps through
+   services.
+3. **How to inject the current user?** The `AuditorAware` bean is the single
+   seam — today it returns `"system"`; PR #26 (security) swaps it for the
+   authenticated principal.
+
+### Key decisions
+- **Declared once in `BaseEntity`** (like `@Version`) so every entity inherits
+  auditing automatically.
+- **`created_*` are `updatable = false`** — insert-only, enforced both at the
+  JPA and (column semantics) level.
+- **No audit columns on the pure join table** `product_categories` — it has no
+  entity and therefore no auditor.
 
 ---
 
