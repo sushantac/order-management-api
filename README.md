@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #8 (Optimistic Locking) — awaiting review.**
+> **Status: PR #9 (Pessimistic Locking) — awaiting review.**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -453,6 +453,56 @@ concurrent scenarios without holding database locks.
 - **Retry, don't serialise**: the 100-worker test succeeds because only a few
   calls collide per moment and `@Retryable(maxAttempts = 50)` re-reads the
   newest version. Business rejections (insufficient stock) are NOT retried.
+
+---
+
+## PR #9 — Pessimistic Locking
+
+**Aspect learned:** `@Lock` and pessimistic locking — taking real database row
+locks so competing transactions **wait instead of abort**.
+
+### Deliverables in this PR
+- [x] `@Lock(PESSIMISTIC_WRITE)` repository method (`findByIdForUpdate`
+      → `SELECT … FOR UPDATE`)
+- [x] `@Lock(PESSIMISTIC_READ)` for read operations (`findByIdForShare`
+      → PostgreSQL `SELECT … FOR SHARE`)
+- [x] `ProductInventoryService` — lock-based stock ops + a `moveStockPessimistic`
+      method that demonstrates **deadlock detection & `@Retryable` resolution**
+- [x] `PessimisticLockingIntegrationTest` — writer blocking, share locks, deadlock
+- [x] `LockingPerformanceComparisonTest` — optimistic vs pessimistic numbers
+
+### Key questions answered
+
+1. **What is pessimistic locking and when to use it?**
+   The row is locked the moment it is read (`FOR UPDATE`). Any competing
+   transaction queues until the lock holder commits — no aborted work, no
+   retries needed. Use it when contention on a row is high enough that
+   optimistic retries cost more than the lock wait.
+
+2. **What are the `LockModeType` options?**
+   `PESSIMISTIC_WRITE` = exclusive (`FOR UPDATE`); `PESSIMISTIC_READ` = shared
+   (`FOR SHARE`) — many readers, no writers; plus the optimistic family
+   (`OPTIMISTIC`, `OPTIMISTIC_FORCE_INCREMENT`) and `NONE`.
+
+3. **Trade-offs vs optimistic locking?**
+   Measured in this PR on 40 contended decrements of one row:
+   **optimistic ≈ 115 ms, pessimistic ≈ 26 ms** (pessimistic wins at high
+   contention because no work is wasted on retries). Optimistic wins at low
+   contention — it takes no locks and never blocks readers. Rule of thumb:
+   optimistic for read-heavy & low-conflict, pessimistic for hot, write-heavy
+   rows; the benchmark logs both every run.
+
+### Key decisions & findings
+- **Real deadlock demonstrated**: two transactions locking the same two rows in
+  opposite order → PostgreSQL aborts one with `40P01` (surfaced as
+  `DeadlockLoserDataAccessException`) → `@Retryable(maxAttempts=5)` re-runs it
+  to completion. Retrying deadlocks is safe **because** the victim transaction
+  was fully rolled back.
+- **`FOR SHARE` cannot run in a read-only transaction** — PostgreSQL rejects it
+  (`cannot execute SELECT FOR SHARE in a read-only transaction`); the peek
+  service method is therefore a normal (writable-capable) transaction.
+- **Locks live until commit** — the blocking test holds a lock inside the
+  transaction for 600 ms and proves a second writer waits ≥ the remainder.
 
 ---
 
