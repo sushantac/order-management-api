@@ -1,0 +1,37 @@
+# Branch Protection Rules
+branches:
+  main:
+    protection:
+      required_status_checks:
+        contexts:
+          - "continuous-integration"
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+      enforce_admins: true
+      restrictions: null
+
+  develop:
+    protection:
+      required_status_checks:
+        contexts:
+          - "continuous-integration"
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+
+  staging:
+    protection:
+      required_status_checks:
+        contexts:
+          - "continuous-integration"
+      required_pull_request_reviews:
+        required_approving_review_count: 2
+
+  prod:
+    protection:
+      required_status_checks:
+        contexts:
+          - "continuous-integration"
+          - "deployment-tests"
+      required_pull_request_reviews:
+        required_approving_review_count: 2
+      required_conversation_resolution: true
