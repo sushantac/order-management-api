@@ -10,3 +10,15 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+    # PR #15 - SQL/log noise is a dev feature; production stays quiet (and
+    # statistics collection adds overhead).
+    show-sql: false
+    properties:
+      hibernate:
+        generate_statistics: false
+
+logging:
+  level:
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    org.hibernate.stat: WARN
