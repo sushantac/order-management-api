@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #11 (Custom Queries) — merged ✅ (next: PR #12)**
+> **Status: PR #12 (Specifications & QueryDSL) — merged ✅ (next: PR #13)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -575,6 +575,33 @@ dynamic filters.
 4. **Bonus (SpEL):** `:#{#range.minTotal()}` dereferences a method-argument
    object inside JPQL; paired with `is null or ...` guards it makes predicates
    optional — one method, four filter combinations, zero SQL concatenation.
+
+---
+
+## PR #12 — Specifications & QueryDSL
+
+**Aspect learned:** JPA `Specification` — dynamic, type-safe, composable queries.
+
+### Deliverables
+- [x] `JpaSpecificationExecutor<Customer>` on `CustomerRepository`
+- [x] `CustomerSpecifications` — reusable predicate builders (name contains,
+      has order status, has order total ≥ …)
+- [x] Composition (`where(...).and(...)`) + `count(Specification)`
+- [x] `SpecificationIntegrationTest` — 4 dynamic-query tests on real Postgres
+
+### Key questions answered
+1. **What is a JPA Specification?** A functional interface that turns a
+   `CriteriaBuilder` query into one `Predicate` — i.e. a type-safe, reusable
+   WHERE clause as data.
+2. **When to use Specifications?** Whenever the filter set is dynamic (search
+   screens, admin lists). Composing at runtime is safer and more readable than
+   concatenating JPQL/SQL strings.
+3. **How to build dynamic queries?** Small static `Specification` factories
+   (null-safe: a missing filter contributes `conjunction()`, never an error),
+   combined by the caller with `.and()`/`.or()` and executed via
+   `findAll(spec)`/`count(spec)`.
+4. **Gotcha handled:** specifications that JOIN collections return duplicates —
+   the join specs call `query.distinct(true)` (guarded for count queries).
 
 ---
 
