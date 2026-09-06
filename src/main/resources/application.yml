@@ -1,0 +1,43 @@
+# ============================================================================
+# PR #1 - Project Setup - basic configuration.
+# ----------------------------------------------------------------------------
+# No database yet (by design):
+#   - docker-compose.yml + PostgreSQL  -> PR #2
+#   - Liquibase changelogs             -> PR #2
+#   - JPA entities / repositories      -> PR #3
+#
+# Until then the DB-related auto-configurations are excluded so the app
+# starts (and the contextLoads test passes) WITHOUT a running database.
+# PR #2 will remove these exclusions and wire the real PostgreSQL DataSource.
+# ============================================================================
+spring:
+  application:
+    name: order-management-api
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration
+
+server:
+  # SERVER_PORT env var overridable - useful for tests / running multiple instances.
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+  endpoint:
+    health:
+      # Visible in dev; switch to never/on-custom in production (PR later).
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    # Our own classes log at DEBUG during the learning journey.
+    com.company.orderapi: DEBUG

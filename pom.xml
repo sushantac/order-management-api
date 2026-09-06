@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  PR #1 - Project Setup
+  Aspect learned: Spring Boot project structure and dependency management.
+
+  Key decisions:
+  1. Spring Boot 3.2.1 is pinned to match the learning spec. Spring Boot's
+     parent POM manages dependency versions ("starter" BOM), so we never
+     hard-code third-party versions and stay upgrade-safe.
+  2. Java 21 LTS is the language/bytecode target (records, pattern matching,
+     virtual threads in later PRs). `maven.compiler.release` guarantees Java
+     21 bytecode even when a newer JDK is installed on the dev machine.
+  3. Only the core starters needed for a JPA/REST project are added now.
+     PostgreSQL + Liquibase jars are already on the classpath because the
+     very next PRs need them (PR #2 schema + docker-compose, PR #3 entities).
+     The application.yml excludes DB auto-configuration until PR #2, so the
+     app still boots/tests without a running database.
+  4. Deliberately NO Lombok - per coding standards we prefer plain Java.
+  5. The Maven wrapper (mvnw) pins the exact Maven version for every
+     contributor/CI machine - no local Maven install required.
+  ============================================================================
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Spring Boot parent: brings dependency management + plugin versions. -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.1</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.company</groupId>
+    <artifactId>order-management-api</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>order-management-api</name>
+    <description>Production-grade Order Management API - one PR at a time</description>
+
+    <properties>
+        <!-- Java 21 LTS: language level AND bytecode target for the whole build. -->
+        <java.version>21</java.version>
+        <!-- Force Java 21 bytecode even when compiling with a newer local JDK. -->
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- Web: REST controllers, embedded Tomcat, JSON via Jackson. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!--
+          JPA: Hibernate + Spring Data JPA. The heart of the learning journey
+          (foreign keys, cascading, fetch strategies, locking from PR #3 on).
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- Bean Validation (jakarta.validation) - used from PR #23 on. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Actuator: /actuator/health etc. for local dev and later K8s probes. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Liquibase: schema versioning. Changelogs arrive in PR #2. -->
+        <dependency>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-core</artifactId>
+        </dependency>
+
+        <!-- PostgreSQL driver (runtime only - never compile against JDBC driver). -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Test: JUnit 5, Mockito, AssertJ, Spring Test / MockMvc. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Package as an executable jar + run `mvn spring-boot:run`. -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
