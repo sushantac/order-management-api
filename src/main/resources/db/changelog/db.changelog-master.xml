@@ -27,5 +27,7 @@
     <include file="v1.0/02_add_version_columns.sql" relativeToChangelogFile="true"/>
     <!-- PR #10: auditing columns on every entity table. -->
     <include file="v1.0/03_add_audit_columns.sql" relativeToChangelogFile="true"/>
+    <!-- PR #13: order_number populated by a @PrePersist callback. -->
+    <include file="v1.0/04_add_order_number.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

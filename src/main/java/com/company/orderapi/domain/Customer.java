@@ -7,6 +7,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.NamedAttributeNode;
 import jakarta.persistence.NamedEntityGraph;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PreRemove;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.BatchSize;
 
@@ -87,6 +88,21 @@ public class Customer extends BaseEntity {
     public void addOrder(Order order) {
         orders.add(order);
         order.setCustomer(this);
+    }
+
+    /**
+     * PR #13 {@code @PreRemove}: guard business rules on deletion. Deleting a
+     * customer who still has orders would silently destroy their history (and,
+     * thanks to DB CASCADE, their addresses too) - this callback refuses.
+     * Note the DB would happily CASCADE; the callback is the BUSINESS rule.
+     */
+    @PreRemove
+    void assertRemovalAllowed() {
+        if (orders != null && !orders.isEmpty()) {
+            throw new IllegalStateException(
+                    "Customer " + getId() + " cannot be removed: still has "
+                            + orders.size() + " order(s)");
+        }
     }
 
     public String getEmail() {
