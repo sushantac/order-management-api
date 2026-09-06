@@ -1,0 +1,34 @@
+# ============================================================================
+# PR #2 - local infrastructure.
+# ----------------------------------------------------------------------------
+# PostgreSQL 16 for local development. Further services (Redis in PR #28,
+# Kafka in PR #31, ...) will be added as separate services here.
+#
+# DEV ONLY credentials - real environments inject secrets via GitOps/secrets
+# managers, never via docker-compose.
+# ============================================================================
+services:
+  postgres:
+    image: postgres:16
+    container_name: order-api-postgres
+    environment:
+      POSTGRES_DB: orderdb
+      POSTGRES_USER: order
+      POSTGRES_PASSWORD: order
+    ports:
+      # host:container - change the left side if 5432 is already in use.
+      - "5432:5432"
+    volumes:
+      # Named volume (NOT a bind mount) so data survives restarts while staying
+      # out of the git repo.
+      - order-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready lets docker compose wait until Postgres actually accepts
+      # connections before the API starts (depends_on + condition later PRs).
+      test: ["CMD-SHELL", "pg_isready -U order -d orderdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  order-postgres-data:

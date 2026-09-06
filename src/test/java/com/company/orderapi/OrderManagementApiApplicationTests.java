@@ -2,20 +2,36 @@ package com.company.orderapi;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * PR #1 smoke test: proves the Spring application context can start.
+ * Smoke test: the full Spring context starts against a REAL PostgreSQL 16.
  *
- * <p>If this test fails, the project skeleton is broken (bad wiring,
- * unresolvable auto-configuration, missing resource, etc.). It stays green
- * without a database because application.yml excludes DB auto-configuration
- * until PR #2 introduces PostgreSQL via docker-compose.
+ * <p>PR #1: proved the skeleton boots without a database.
+ * <p>PR #2: the app is now wired to PostgreSQL via Liquibase, so the context
+ * only starts if (a) a database is reachable and (b) Liquibase successfully
+ * applies {@code db.changelog-master.xml}. Testcontainers gives us that real
+ * database; {@link ServiceConnection} forwards the container's JDBC settings
+ * to Spring Boot automatically.
+ *
+ * <p>If this test fails, the context itself is broken - not a single test's
+ * assertion. That makes it a great early-warning signal on every build.
  */
+@Testcontainers
 @SpringBootTest
 class OrderManagementApiApplicationTests {
 
+    @Container
+    @ServiceConnection
+    static final PostgreSQLContainer<?> POSTGRES =
+            new PostgreSQLContainer<>("postgres:16-alpine");
+
     @Test
     void contextLoads() {
-        // Empty on purpose: starting the context IS the assertion.
+        // Empty on purpose: starting the context (and running Liquibase) IS
+        // the assertion.
     }
 }
