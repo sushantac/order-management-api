@@ -32,6 +32,24 @@ public interface CustomerRepository extends JpaRepository<Customer, Long>,
         JpaSpecificationExecutor<Customer> {
 
     /**
+     * PR #17 - interface-based projection: Spring Data generates a proxy whose
+     * getters are fed from the selected columns (aliases must match getters).
+     * Only the listed columns are fetched - the whole entity is NOT loaded.
+     */
+    interface CustomerNameProjection {
+        String getEmail();
+
+        String getFullName();
+    }
+
+    @Query("""
+            select c.email as email, c.fullName as fullName
+            from Customer c
+            order by c.fullName
+            """)
+    List<CustomerNameProjection> findAllCustomerNameProjections();
+
+    /**
      * Fix 1 - JPQL JOIN FETCH.
      * {@code join fetch} is imperative SQL-level control: one query, addresses
      * joined and marked as fetched. {@code distinct} removes the row duplication

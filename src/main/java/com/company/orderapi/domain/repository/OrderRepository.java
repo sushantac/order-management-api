@@ -75,6 +75,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findOrdersPaged(Pageable pageable);
 
     /**
+     * PR #17 - class-based projection via a JPQL constructor expression:
+     * {@code new com.company.orderapi.domain.repository.CustomerOrderTotal(...)}.
+     * Class projections can carry aggregates that interface projections cannot.
+     */
+    @Query("""
+            select new com.company.orderapi.domain.repository.CustomerOrderTotal(
+                       o.customer.email, sum(o.totalAmount))
+            from Order o
+            group by o.customer.email
+            order by o.customer.email
+            """)
+    List<CustomerOrderTotal> findCustomerOrderTotals();
+
+    /**
      * SpEL in {@code @Query}: a whole parameter object is dereferenced with
      * {@code :#{#range.minTotal()}}. Each component may be null; the guard
      * {@code :param is null or ...} makes every predicate optional, so this one

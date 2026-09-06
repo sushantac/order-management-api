@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #16 (Second Level Cache) — merged ✅ (next: PR #17)**
+> **Status: PR #17 (DTO Projections) — merged ✅ (next: PR #18)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -724,6 +724,32 @@ contexts (Hibernate JCache + Ehcache).
    Every integration test therefore runs in its own context (unique
    `@TestPropertySource`) with L2 **disabled** — only
    `SecondLevelCacheIntegrationTest` re-enables it, in isolation.
+
+---
+
+## PR #17 — DTO Projections
+
+**Aspect learned:** fetch only what you need — JPA projections beat loading whole
+entities for read/list views.
+
+### Deliverables
+- [x] Interface-based projection (`CustomerRepository.CustomerNameProjection`)
+- [x] Class-based projection via JPQL constructor expression (`CustomerOrderTotal`,
+      `select new …`)
+- [x] `@Query` returning projections (incl. an aggregation `SUM` a plain
+      interface cannot express)
+- [x] `ProjectionIntegrationTest` incl. entity-vs-projection equivalence check
+
+### Key questions answered
+1. **What are JPA projections?** Queries whose result rows are NOT entities —
+   interface proxies (Spring Data) or plain classes built by a constructor
+   expression — carrying only the selected columns.
+2. **Why projections vs entities?** Entities drag the full row + lazy graph
+   semantics + audit/version state. Projections stay lean for lists/reports and
+   never risk `LazyInitializationException` outside a transaction.
+3. **Interface vs class projections?** Interfaces are convenient when the data
+   is simple column selection; class (constructor) expressions are needed for
+   expressions/aggregates (`GROUP BY`, `SUM`) and give you a real, testable type.
 
 ---
 
