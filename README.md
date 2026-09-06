@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #5 (Fetch Types) — awaiting review.**
+> **Status: PR #6 (Fetch Joins & Entity Graphs / N+1 Fix) — awaiting review.**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -326,6 +326,39 @@ relative to its owner, and why production code defaults to LAZY.
    (demonstrated & counted in the test: exactly `1 + customers.size()`).
    EAGER would move the same explosion into the initial query. Neither is the
    fix — deliberate fetching (next PR) is.
+
+---
+
+## PR #6 — Fetch Joins & Entity Graphs (N+1 Fix)
+
+**Aspect learned:** fixing the N+1 problem with `JOIN FETCH` and `@EntityGraph`.
+
+### Deliverables in this PR
+- [x] Naive N+1 demo path (`CustomerRepository.findAll()` + lazy traversal)
+- [x] `JOIN FETCH` solution in JPQL (`findAllWithAddressesJoinFetch`)
+- [x] `@EntityGraph(attributePaths = {"addresses"})` solution
+- [x] `@NamedEntityGraph("Customer.addresses")` on the entity + named reference
+- [x] Hibernate query counting via `Statistics`
+- [x] `NPlusOneDemoTest` — before/after, with hard numbers
+
+### Key questions answered
+
+1. **What is the N+1 problem and how do you identify it?**
+   1 query fetches N parent rows; traversing a lazy association adds N more.
+   Identified by counting real statements (Hibernate `Statistics`) — the demo
+   test proves `1 + N = 5` statements for 4 customers with addresses.
+
+2. **What is the difference between `JOIN FETCH` and `@EntityGraph`?**
+   `JOIN FETCH` is imperative and lives *in the JPQL* — you change SQL by hand.
+   `@EntityGraph` is declarative metadata that Spring Data applies to the query;
+   the same repository method stays clean and the fetch recipe is reusable.
+   `@NamedEntityGraph` pushes the recipe onto the entity so many queries reuse it.
+
+3. **When to use `@EntityGraph` vs `JOIN FETCH`?**
+   Use `@EntityGraph`/`@NamedEntityGraph` for reusable, per-use-case fetch
+   recipes on Spring Data queries; keep `JOIN FETCH` when you need full JPQL
+   control (filtering/joins beyond fetching). Both collapsed N+1 to **1**
+   statement in the tests.
 
 ---
 
