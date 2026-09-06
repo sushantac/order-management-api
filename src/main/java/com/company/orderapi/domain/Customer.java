@@ -4,6 +4,8 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.NamedAttributeNode;
+import jakarta.persistence.NamedEntityGraph;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
@@ -21,9 +23,15 @@ import java.util.List;
  * </ul>
  * {@code mappedBy} says "look at the OTHER side's field for the join column";
  * the FK column is written exactly once, in the owning (many-to-one) entity.
+ *
+ * <p>PR #6 - {@code @NamedEntityGraph} declares a reusable fetch recipe that
+ * repository methods opt into with {@code @EntityGraph("Customer.addresses")}.
  */
 @Entity
 @Table(name = "customers")
+@NamedEntityGraph(
+        name = "Customer.addresses",
+        attributeNodes = @NamedAttributeNode("addresses"))
 public class Customer extends BaseEntity {
 
     @Column(name = "email", nullable = false, unique = true, length = 255)
