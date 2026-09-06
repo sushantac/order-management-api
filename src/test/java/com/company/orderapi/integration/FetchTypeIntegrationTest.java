@@ -47,7 +47,9 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.jpa.properties.hibernate.generate_statistics=true",
         // PR #5/#6 demonstrate raw LAZY behaviour - disable the global batch
         // fetching (PR #7) so the N+1 pattern stays visible in this class.
-        "spring.jpa.properties.hibernate.default_batch_fetch_size=1"
+        "spring.jpa.properties.hibernate.default_batch_fetch_size=1",
+        // L2 is disabled in tests except the dedicated cache test.
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false"
 })
 @Transactional
 class FetchTypeIntegrationTest {

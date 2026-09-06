@@ -45,9 +45,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @SpringBootTest
 @TestPropertySource(properties = {
-        "spring.jpa.properties.hibernate.generate_statistics=true"
+        "spring.jpa.properties.hibernate.generate_statistics=true",
         // NB: deliberately does NOT override default_batch_fetch_size, so this
         // class exercises the PR #7 global value (20) from application.yml.
+        // Tests disable the second-level cache (shared JVM Ehcache) unless the
+        // test under focus is SecondLevelCacheIntegrationTest itself.
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false"
 })
 @Transactional
 class BatchFetchIntegrationTest {

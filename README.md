@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #15 (SQL Logging & Debugging) — merged ✅ (next: PR #16)**
+> **Status: PR #16 (Second Level Cache) — merged ✅ (next: PR #17)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -690,6 +690,40 @@ comments and statistics.
    `SessionFactory.getStatistics()` (used by our N+1/batch/locking tests).
 4. **Production stance:** verbose SQL/bind TRACE and statistics are dev tools —
    `application-prod.yml` disables them all to keep logs small and overhead low.
+
+---
+
+## PR #16 — Second Level Cache
+
+**Aspect learned:** JPA second-level cache — reuse entities ACROSS persistence
+contexts (Hibernate JCache + Ehcache).
+
+### Deliverables
+- [x] `hibernate.cache.use_second_level_cache=true` +
+      `region.factory_class=jcache` (Ehcache provider)
+- [x] `@Cacheable` + `@Cache(READ_WRITE)` on `Product`
+- [x] Selective mode (`jakarta.persistence.sharedCache.mode=ENABLE_SELECTIVE`)
+- [x] `SecondLevelCacheIntegrationTest` — hits/misses, write-through refresh
+
+### Key questions answered
+1. **Second-level vs first-level cache?** L1 is per-EntityManager (default, not
+   shareable); L2 lives in the SessionFactory and survives across persistence
+   contexts — that is what makes a second `findById` in a NEW session a cache
+   hit with **zero JDBC** (proven by statement counter).
+2. **How is it configured?** A JCache provider (`hibernate-jcache` + Ehcache) +
+   enabling the cache + marking entities `@Cacheable`; concurrency strategy
+   `READ_WRITE` for mutable, versioned data.
+3. **When to use it?** Read-heavy, rarely-mutated entities (product catalogue!).
+   Avoid caching hot write rows (inventory counters) — the tests here still
+   passed for the optimistic-lock benchmark, but per-entity judgement is key.
+4. **Learned while testing:** `READ_WRITE` is **write-through** — an update
+   *refreshes* the cache entry at commit, so the next read is a hit carrying the
+   new state (not a stale read, no extra SELECT).
+5. **Test isolation:** Ehcache's default cache manager is JVM-wide and SHARED
+   across Spring test contexts, so cached ids can leak between test classes.
+   Every integration test therefore runs in its own context (unique
+   `@TestPropertySource`) with L2 **disabled** — only
+   `SecondLevelCacheIntegrationTest` re-enables it, in isolation.
 
 ---
 

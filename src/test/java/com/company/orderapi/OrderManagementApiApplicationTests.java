@@ -1,5 +1,7 @@
 package com.company.orderapi;
 
+import org.springframework.test.context.TestPropertySource;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -22,6 +24,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @Testcontainers
 @SpringBootTest
+@TestPropertySource(properties = "spring.jpa.properties.hibernate.cache.use_second_level_cache=false")
 class OrderManagementApiApplicationTests {
 
     @Container

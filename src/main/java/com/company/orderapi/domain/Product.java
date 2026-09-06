@@ -1,5 +1,6 @@
 package com.company.orderapi.domain;
 
+import jakarta.persistence.Cacheable;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -8,6 +9,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
@@ -27,6 +30,8 @@ import java.util.Set;
  */
 @Entity
 @Table(name = "products")
+@Cacheable
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 public class Product extends BaseEntity {
 
     @Column(name = "name", nullable = false, length = 255)

@@ -1,5 +1,7 @@
 package com.company.orderapi.integration;
 
+import org.springframework.test.context.TestPropertySource;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,6 +32,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Testcontainers
 @SpringBootTest
+@TestPropertySource(properties = {
+        "integration.database.tag=DatabaseSchemaIntegrationTest",
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false"
+})
 class DatabaseSchemaIntegrationTest {
 
     @Container

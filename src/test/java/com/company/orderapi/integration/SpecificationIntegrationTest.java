@@ -1,5 +1,7 @@
 package com.company.orderapi.integration;
 
+import org.springframework.test.context.TestPropertySource;
+
 import com.company.orderapi.domain.Customer;
 import com.company.orderapi.domain.Order;
 import com.company.orderapi.domain.OrderStatus;
@@ -34,6 +36,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Testcontainers
 @SpringBootTest
+@TestPropertySource(properties = {
+        "integration.database.tag=SpecificationIntegrationTest",
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false"
+})
 @Transactional
 class SpecificationIntegrationTest {
 

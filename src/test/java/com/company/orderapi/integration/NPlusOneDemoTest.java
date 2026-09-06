@@ -41,7 +41,10 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.jpa.properties.hibernate.generate_statistics=true",
         // The naive test intentionally shows N+1, so isolate this class from
         // the global batch fetching that PR #7 adds (keep it at 1).
-        "spring.jpa.properties.hibernate.default_batch_fetch_size=1"
+        "spring.jpa.properties.hibernate.default_batch_fetch_size=1",
+        // Tests disable the second-level cache (shared JVM Ehcache) unless the
+        // test under focus is SecondLevelCacheIntegrationTest itself.
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false"
 })
 @Transactional
 class NPlusOneDemoTest {

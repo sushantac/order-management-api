@@ -1,5 +1,7 @@
 package com.company.orderapi.integration;
 
+import org.springframework.test.context.TestPropertySource;
+
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Table;
 import jakarta.persistence.metamodel.EntityType;
@@ -30,6 +32,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Testcontainers
 @SpringBootTest
+@TestPropertySource(properties = {
+        "integration.database.tag=SchemaValidationIntegrationTest",
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false"
+})
 class SchemaValidationIntegrationTest {
 
     private static final Set<String> REQUIRED_SHARED_COLUMNS =
