@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #6 (Fetch Joins & Entity Graphs / N+1 Fix) — awaiting review.**
+> **Status: PR #7 (Batch Fetching) — awaiting review.**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -359,6 +359,47 @@ relative to its owner, and why production code defaults to LAZY.
    recipes on Spring Data queries; keep `JOIN FETCH` when you need full JPQL
    control (filtering/joins beyond fetching). Both collapsed N+1 to **1**
    statement in the tests.
+
+---
+
+## PR #7 — Batch Fetching
+
+**Aspect learned:** batch fetching — load many lazy associations in one
+`in (...)` query instead of one query per owner.
+
+### Deliverables in this PR
+- [x] `@BatchSize(size = 20)` on the key collections (Customer addresses/orders,
+      Order items)
+- [x] `hibernate.default_batch_fetch_size = 20` (global safety net)
+- [x] `hibernate.jdbc.fetch_size = 100` (ResultSet streaming)
+- [x] `BatchFetchIntegrationTest` — performance comparison with real counts
+
+### Key questions answered
+
+1. **What is batch fetching?**
+   When a lazy association must be loaded, Hibernate doesn't limit itself to the
+   single owner you touched — it loads the same association for every other
+   owner already in the persistence context, using one parameter-array query
+   (`customer_id = any (?)`). 8 customers → 1 query instead of 8.
+
+2. **How does `@BatchSize` work?**
+   It scopes that behaviour per association (collection or entity): at most N
+   owners per round trip. The global
+   `hibernate.default_batch_fetch_size` applies everywhere else; explicit
+   `@BatchSize` overrides it for a specific role.
+
+3. **Batch fetching vs `JOIN FETCH`?**
+   `JOIN FETCH`/`@EntityGraph` are for queries where you KNOW the graph up front.
+   Batch fetching is the safety net for *lazy* traversal you didn't (or can't)
+   plan — it turns accidental N+1 into few round trips without changing any JPQL.
+   Prefer explicit fetching for hot paths; keep batch fetching on as the default
+   backstop.
+
+### Bonus finding (worth remembering)
+Loading an `Order` triggers its optional inverse `@OneToOne payment`: Hibernate
+cannot lazy-proxy a *nullable* one-to-one, so it checks the payments table per
+order. The batch test isolates collection batching (addresses) for this reason —
+a real-world trap to remember when modelling 1:1s.
 
 ---
 

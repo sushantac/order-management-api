@@ -11,6 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -68,6 +69,7 @@ public class Order extends BaseEntity {
      */
     @OneToMany(mappedBy = "order", fetch = FetchType.LAZY,
             cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 20)
     private List<OrderItem> items = new ArrayList<>();
 
     /**

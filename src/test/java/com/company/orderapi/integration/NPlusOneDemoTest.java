@@ -38,7 +38,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @SpringBootTest
 @TestPropertySource(properties = {
-        "spring.jpa.properties.hibernate.generate_statistics=true"
+        "spring.jpa.properties.hibernate.generate_statistics=true",
+        // The naive test intentionally shows N+1, so isolate this class from
+        // the global batch fetching that PR #7 adds (keep it at 1).
+        "spring.jpa.properties.hibernate.default_batch_fetch_size=1"
 })
 @Transactional
 class NPlusOneDemoTest {

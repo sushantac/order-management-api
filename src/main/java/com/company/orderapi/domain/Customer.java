@@ -8,6 +8,7 @@ import jakarta.persistence.NamedAttributeNode;
 import jakarta.persistence.NamedEntityGraph;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,10 @@ public class Customer extends BaseEntity {
      * PR #4: {@code cascade = PERSIST} - saving a new customer saves its
      * address book in the same flush.
      */
+    // No explicit @BatchSize here on purpose: this role is used by the naive
+    // N+1 demonstrations (PR #5/#6), which tune default_batch_fetch_size=1 to
+    // show per-owner queries. The global default_batch_fetch_size=20 (PR #7)
+    // applies to it everywhere else.
     @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY,
             cascade = CascadeType.PERSIST)
     private List<Address> addresses = new ArrayList<>();
@@ -60,6 +65,7 @@ public class Customer extends BaseEntity {
      */
     @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY,
             cascade = CascadeType.PERSIST)
+    @BatchSize(size = 20)
     private List<Order> orders = new ArrayList<>();
 
     protected Customer() {

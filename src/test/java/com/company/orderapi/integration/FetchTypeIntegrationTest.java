@@ -44,7 +44,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestPropertySource(properties = {
         "spring.jpa.show-sql=true",
         "spring.jpa.properties.hibernate.format_sql=true",
-        "spring.jpa.properties.hibernate.generate_statistics=true"
+        "spring.jpa.properties.hibernate.generate_statistics=true",
+        // PR #5/#6 demonstrate raw LAZY behaviour - disable the global batch
+        // fetching (PR #7) so the N+1 pattern stays visible in this class.
+        "spring.jpa.properties.hibernate.default_batch_fetch_size=1"
 })
 @Transactional
 class FetchTypeIntegrationTest {

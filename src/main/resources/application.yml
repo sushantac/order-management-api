@@ -30,12 +30,21 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      # Liquibase owns the schema. 'validate' (from PR #3 on) only confirms the
-      # JPA entities match the DB - it never modifies anything.
+      # Liquibase owns the schema. 'validate' only confirms the JPA entities
+      # match the DB - it never modifies anything.
       ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
+        # PR #7 - batch fetching knobs.
+        # default_batch_fetch_size: when a lazy collection/many-to-one IS loaded,
+        # Hibernate loads up to this many owners in ONE "in (...)" query instead
+        # of firing one query per owner (kills most N+1 without any JPQL).
+        default_batch_fetch_size: 20
+        # jdbc.fetch_size: rows streamed from the DB per round-trip (ResultSet
+        # fetch size). Helps large result sets, independent of batch fetching.
+        jdbc:
+          fetch_size: 100
 
 server:
   # SERVER_PORT env var overridable - useful for tests / running multiple instances.
