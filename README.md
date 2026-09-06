@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #20 (Service Layer) — merged ✅ (next: PR #21)**
+> **Status: PR #21 (DTOs — Java Records) — merged ✅ (next: PR #22)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -837,6 +837,28 @@ work.
 4. **Verification:** the rollback test reads the **committed** database (tests
    are intentionally not `@Transactional`) and proves zero orders survived and
    the stock is untouched after a failed payment.
+
+---
+
+## PR #21 — DTOs (Java Records)
+
+**Aspect learned:** separate the API contract from the domain model using Java
+records.
+
+### Deliverables
+- [x] `OrderRequest`/`OrderResponse` (+ item records) with validation annotations
+- [x] `CustomerRequest`/`CustomerResponse`, `ProductRequest`/`ProductResponse`
+- [x] `OrderMapper` — explicit entity → DTO mapping
+
+### Key questions answered
+1. **Why DTOs instead of exposing entities?** Entities leak persistence
+   internals (version, audit users, lazy proxies) and couple clients to the
+   domain. DTOs are the stable, versionable API contract.
+2. **Why Java records?** Immutable value carriers with `equals`/`hashCode`/
+   `toString` for free — ideal for request/response payloads.
+3. **How do you map entities to DTOs?** Explicitly (`OrderMapper`): one
+   readable mapping per type, no reflection/magic, and the mapper doubles as
+   documentation of exactly what the API exposes.
 
 ---
 
