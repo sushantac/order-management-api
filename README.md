@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #19 (Event Sourcing & Event Store) — merged ✅ (next: PR #20)**
+> **Status: PR #20 (Service Layer) — merged ✅ (next: PR #21)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -806,6 +806,37 @@ rebuild state by replaying them, instead of only storing the current state.
    guarantees each fact is appended exactly once (tested: duplicate append is
    rejected). Events are serialised as JSON; the payload column is TEXT to keep
    JPA/PostgreSQL casts simple (JSONB would need driver-level casts).
+
+---
+
+## PR #20 — Service Layer
+
+**Aspect learned:** transaction management & ACID — business logic lives in
+`@Transactional` services, and one failing step rolls back the entire unit of
+work.
+
+### Deliverables
+- [x] `OrderService` (`@Transactional`) with `placeOrder(...)`
+- [x] Stock deduction inside the order transaction (versioned)
+- [x] `@Retryable` for optimistic-lock conflicts on hot products
+- [x] `SimulatedPaymentGateway` with a **10% failure rate**
+      (`PaymentGateway` interface → deterministic fake in tests)
+- [x] `OrderServiceTest` proving success AND full rollback on payment failure
+
+### Key questions answered
+1. **What is ACID and why does it matter?** Atomicity, Consistency, Isolation,
+   Durability. `placeOrder` = deduct stock + insert order/items + charge
+   payment; if the charge fails, ALL of it must vanish (atomic) or customers get
+   charged without stock.
+2. **How does `@Transactional` work?** The proxy opens a DB transaction before
+   the method and commits/rolls back after — a `RuntimeException` rolls back.
+   Nested calls join the same transaction.
+3. **Optimistic locking in the service?** Stock writes are versioned (PR #8);
+   `@Retryable` re-runs the whole `placeOrder` in a fresh transaction on a
+   conflict — the previous attempt was fully rolled back, so retry is safe.
+4. **Verification:** the rollback test reads the **committed** database (tests
+   are intentionally not `@Transactional`) and proves zero orders survived and
+   the stock is untouched after a failed payment.
 
 ---
 
