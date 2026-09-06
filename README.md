@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #12 (Specifications & QueryDSL) — merged ✅ (next: PR #13)**
+> **Status: PR #13 (Entity Lifecycle Callbacks) — merged ✅ (next: PR #14)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -602,6 +602,39 @@ dynamic filters.
    `findAll(spec)`/`count(spec)`.
 4. **Gotcha handled:** specifications that JOIN collections return duplicates —
    the join specs call `query.distinct(true)` (guarded for count queries).
+
+---
+
+## PR #13 — Entity Lifecycle Callbacks
+
+**Aspect learned:** `@PrePersist` / `@PreUpdate` / `@PreRemove` / `@PostLoad` —
+hooks that run around the persistence lifecycle inside the entity itself.
+
+### Deliverables
+- [x] `@PrePersist` on Order — generates the `order_number` (new Liquibase
+      column, unique index) exactly once, never re-generated on update
+- [x] `@PreUpdate` on Payment — stamps `payment_date` when a payment becomes
+      `PROCESSED`
+- [x] `@PreRemove` on Customer — refuses deletion while orders exist
+- [x] `@PostLoad` on `BaseEntity` — log + observable load flag
+- [x] `LifecycleCallbackIntegrationTest` — all four callbacks verified
+
+### Key questions answered
+1. **What are JPA lifecycle callbacks?** Annotations on entity methods that
+   Hibernate invokes at well-defined moments: `@PrePersist`/`@PostPersist`
+   (insert), `@PreUpdate`/`@PostUpdate` (update), `@PreRemove`/`@PostRemove`
+   (delete), `@PostLoad` (read).
+2. **Order of execution?** Pre-callbacks run inside the same transaction,
+   before the statement; the entity listener and the entity's own callbacks
+   both run (`@EntityListeners` (auditing) coexists with callbacks on
+   `BaseEntity`). There is no guaranteed relative order between listener and
+   callback — never make them depend on each other.
+3. **`@PrePersist` vs `@PreUpdate`?** PrePersist fires only on insert (generate
+   the order number once); PreUpdate fires on every change (stamp "processed
+   at"). Doing them in the wrong callback either misses updates or re-runs
+   one-time logic.
+4. **Gotcha surfaced:** the DB's `ON DELETE CASCADE` would silently delete a
+   customer's orders — the `@PreRemove` callback is the *business* rule on top.
 
 ---
 

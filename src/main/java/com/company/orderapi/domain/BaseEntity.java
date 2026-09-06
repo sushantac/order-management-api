@@ -6,7 +6,11 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.Transient;
 import jakarta.persistence.Version;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -39,6 +43,8 @@ import java.time.LocalDateTime;
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
+
+    private static final Logger log = LoggerFactory.getLogger(BaseEntity.class);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -92,6 +98,22 @@ public abstract class BaseEntity {
 
     public String getUpdatedBy() {
         return updatedBy;
+    }
+
+    // --- PR #13: @PostLoad demonstration (inherited by every entity) ---------
+
+    /** In-memory only: set to true every time this instance is loaded from the DB. */
+    @Transient
+    private boolean postLoadFired;
+
+    @PostLoad
+    void onPostLoad() {
+        this.postLoadFired = true;
+        log.debug("{}#{} loaded from the database", getClass().getSimpleName(), getId());
+    }
+
+    public boolean isPostLoadFired() {
+        return postLoadFired;
     }
 
     // No public setId()/setVersion(): the database owns id generation, and

@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
@@ -96,5 +97,18 @@ public class Payment extends BaseEntity {
 
     public void setPaymentDate(LocalDateTime paymentDate) {
         this.paymentDate = paymentDate;
+    }
+
+    /**
+     * PR #13 {@code @PreUpdate}: business invariants that depend on the NEW
+     * state belong in a callback. Processing a payment must record WHEN it was
+     * processed - enforced here, so no service can forget to stamp the date.
+     * Runs before every UPDATE.
+     */
+    @PreUpdate
+    void stampProcessedDate() {
+        if (status == PaymentStatus.PROCESSED && paymentDate == null) {
+            paymentDate = LocalDateTime.now();
+        }
     }
 }
