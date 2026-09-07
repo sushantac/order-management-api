@@ -1,0 +1,28 @@
+{
+  "consumer": { "name": "storefront-web" },
+  "provider": { "name": "order-management-api" },
+  "interactions": [
+    {
+      "description": "a request for an order by id",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/orders/1",
+        "headers": { "Accept": "application/json" }
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "id": 1,
+          "orderNumber": "ORD-ABC123XY",
+          "status": "PLACED",
+          "customerEmail": "c***@e***.com"
+        },
+        "matchingRules": {
+          "$.body.orderNumber": { "match": "type" }
+        }
+      }
+    }
+  ],
+  "metadata": { "pactSpecification": { "version": "3.0.0" } }
+}

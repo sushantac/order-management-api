@@ -1,0 +1,39 @@
+# PR #34 - environment promotion via GitOps: bump the image tag in the target
+# overlay and push a branch -> PR -> merge to the env branch. ArgoCD watches the
+# env branch and rolls the new image into the cluster.
+name: Promote
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment (dev, test, uat, staging, prod)
+        required: true
+        type: choice
+        options: [dev, test, uat, staging, prod]
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set image tag
+        run: |
+          TAG="${{ github.sha }}"
+          sed -i "s|newTag: .*|newTag: ${TAG}|" "k8s/overlays/${{ github.event.inputs.environment }}/kustomization.yaml"
+      - name: Commit to environment branch
+        run: |
+          git config user.name "GitOps Bot"
+          git config user.email "bot@example.com"
+          git checkout -b promote/${{ github.event.inputs.environment }}
+          git add k8s/overlays/${{ github.event.inputs.environment }}
+          git commit -m "promote ${{ github.sha }} to ${{ github.event.inputs.environment }}"
+          git push origin promote/${{ github.event.inputs.environment }}
+      - name: Open promotion PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create --base ${{ github.event.inputs.environment }} \
+            --head promote/${{ github.event.inputs.environment }} \
+            --title "Promote ${{ github.sha }} to ${{ github.event.inputs.environment }}" \
+            --body "Automated GitOps promotion (PR #34 workflow)."

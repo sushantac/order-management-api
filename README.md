@@ -1246,6 +1246,33 @@ what a running system is actually doing.
    contractual promise built on SLOs. Alert rules (docs/monitoring) page on
    budget burn, not on single flaky minutes.
 
+## PR #34 — CI/CD & GitOps
+
+**Aspect learned:** every change is tested automatically, and every promotion to
+a cluster is a reviewable commit - not a button.
+
+### Deliverables
+- [x] GitHub Actions CI (`.github/workflows/ci.yml`): full Testcontainers suite on
+      every PR to `develop` (JDK 21, Maven cache)
+- [x] Promotion workflow (`.github/workflows/promote.yml`): manual dispatch that
+      bumps the overlay image tag and opens the env promotion PR
+- [x] GitOps model documented (`docs/gitops/gitops.md`) + ArgoCD `Application`
+      manifest (`k8s/argocd/order-api.yaml`) - env branches → ArgoCD sync
+- [x] Kustomize overlays per environment (from PR #33) used as the promotion target
+- [x] Sealed Secrets flow for encrypted-in-git secrets (docs + samples from PR #33)
+- [x] Feature flags (`FeatureFlags` bean + `/api/v1/features`, `app.features.*`)
+- [x] Contract testing with Pact: `docs/contracts/` (example pact JSON + flow doc)
+
+### Key questions answered
+1. **What is GitOps?** The cluster's desired state lives in git; an operator
+   (ArgoCD) converges reality to it. Deploy = merge a commit. Rollback = revert.
+2. **How do you handle secrets in git?** Encrypt them. A SealedSecret is
+   decrypted only by the cluster controller, so the manifest is safe to commit;
+   plaintext secrets never enter the repo.
+3. **What is progressive delivery?** Ship in stages (test → uat → staging →
+   prod) watching SLOs at each step; feature flags let a capability ride along
+   dark until it is safe to switch on.
+
 ---
 
 ## Learning Roadmap

@@ -183,6 +183,10 @@ app:
     poll-millis: 2000
     batch-size: 50
     scheduler-enabled: true
+  features:
+    # PR #34 - feature flags (FeatureFlags bean). Override per environment.
+    csv-export: true
+    reporting: false
 
 # --- PR #29: resilience (Resilience4j) --------------------------------------
 # Patterns configured via properties so a change never needs a redeploy:

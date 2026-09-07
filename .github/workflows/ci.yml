@@ -1,0 +1,24 @@
+# PR #34 - CI: every pull request to develop runs the full test suite in a
+# clean container. Testcontainers boots real Postgres/Redis/Kafka per test class,
+# so no external service configuration is needed here.
+name: CI
+on:
+  pull_request:
+    branches: [develop]
+  push:
+    branches: [develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Full test suite (Testcontainers)
+        run: ./mvnw -B test

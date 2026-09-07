@@ -190,6 +190,14 @@ class RestControllerIntegrationTest {
                 .andExpect(status().isConflict());
     }
 
+    @Test
+    void featureFlagsEndpointListsCurrentFlags() throws Exception {
+        mockMvc.perform(get("/api/v1/features"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.csvExport").value(true))
+                .andExpect(jsonPath("$.reporting").value(false));
+    }
+
     private long createCustomer(String email, String name) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/customers")
                         .contentType(MediaType.APPLICATION_JSON)
