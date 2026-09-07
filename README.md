@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #31 (Kafka: Event-Driven) — merged ✅ (next: PR #32 Observability)**
+> **Status: PR #32 (Observability) — in progress on `feature/PR-32-observability`**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -1212,6 +1212,39 @@ offsets + dead-letter handling.
 4. **Schema note:** the payload is a JSON record (dependency-light, keeps the
    learning repo easy to run); switching to Avro/Protobuf + Schema Registry is
    a serializer/dependency swap behind the same topic contract.
+
+## PR #32 — Observability
+
+**Aspect learned:** logs, metrics and traces - the three pillars that tell you
+what a running system is actually doing.
+
+### Deliverables
+- [x] Structured JSON logging with Logback (`logback-spring.xml`; prod profile
+      emits one JSON object per line with MDC fields)
+- [x] MDC correlation/trace IDs: `CorrelationIdFilter` honours/creates
+      `X-Correlation-Id`, echoes it, and puts it in every log line's MDC
+- [x] Micrometer metrics + `@Timed` (`TimedAspect` bean; `order.place` and
+      `product.get` timers with p95 percentiles)
+- [x] Prometheus export: `PrometheusMeterRegistry` + `/actuator/prometheus`
+- [x] OpenTelemetry tracing + Jaeger exporter (OTLP) - disabled by default,
+      enabled in prod; `docker-compose` runs Jaeger all-in-one
+- [x] Custom health indicator (`AppInfoHealthIndicator`) merged into
+      `/actuator/health`
+- [x] SLO definitions: `docs/slo/order-api-slo.md`
+- [x] AlertManager rules: `docs/monitoring/prometheus/alerts.yml`
+
+### Key questions answered
+1. **What is structured logging?** One JSON object per event instead of free
+   text - every field (level, logger, message, MDC correlationId) is
+   queryable by log aggregators. Dev keeps human-readable logs; prod switches
+   to JSON by Spring profile.
+2. **Why distributed tracing?** Logs tie events to a *single service*; a trace
+   spans services. OpenTelemetry propagates the trace context across HTTP and
+   exports spans to Jaeger, where one order request becomes one waterfall.
+3. **SLIs vs SLOs vs SLAs?** An SLI measures (p95 latency, success rate); an
+   SLO is the target over time (≥99.5% success, p95 < 500 ms); an SLA is the
+   contractual promise built on SLOs. Alert rules (docs/monitoring) page on
+   budget burn, not on single flaky minutes.
 
 ---
 

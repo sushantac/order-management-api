@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PR #32 - Logback configuration. Two appenders selected by Spring profile:
+    default/profile-agnostic: human-readable console (dev + all tests).
+    prod: JSON structured logs (one JSON object per line) so log aggregators
+          can parse fields - including the MDC correlation/trace id.
+  The correlationId MDC key is populated by CorrelationIdFilter.
+-->
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%thread] [%X{correlationId:-}] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <springProfile name="prod">
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <logLevel/>
+                    <threadName/>
+                    <mdc/>
+                    <loggerName/>
+                    <message/>
+                    <stackTrace/>
+                </providers>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+</configuration>

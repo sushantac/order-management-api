@@ -117,11 +117,26 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, metrics
+        # PR #32 - prometheus endpoint added for scraping (Prometheus/AlertManager).
+        include: health, info, metrics, prometheus
   endpoint:
     health:
       # Detailed health is handy in dev; restrict before production (later PR).
       show-details: always
+  # PR #32 - OpenTelemetry tracing. Disabled by default so ordinary contexts
+  # never start an exporter; dev/prod profiles enable it (docker-compose Jaeger).
+  tracing:
+    enabled: false
+    sampling:
+      probability: 0.1
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: Production-grade order management API - one PR at a time.
 
 logging:
   level:
