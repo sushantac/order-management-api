@@ -147,6 +147,18 @@
         </dependency>
 
         <!--
+          PR #30 - Redisson: distributed locks on Redis. Plain 'redisson' (not
+          the spring-boot starter) so it never fights Spring Data Redis/Lettuce
+          for the connection factory; we build the client ourselves in
+          RedissonConfig and consume it only via DistributedLockService.
+        -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>3.27.2</version>
+        </dependency>
+
+        <!--
           PR #25 - OpenAPI / Swagger UI. Generates the machine-readable spec at
           /v3/api-docs and serves the UI at /swagger-ui.html (springdoc 2.x is
           the Boot 3.x line).

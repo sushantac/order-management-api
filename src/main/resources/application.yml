@@ -13,6 +13,13 @@ spring:
   application:
     name: order-management-api
 
+  # PR #30 - serve requests on Java 21 VIRTUAL threads instead of platform
+  # threads: the container can hold far more concurrent connections because
+  # each request costs only a small stack instead of a full OS thread.
+  threads:
+    virtual:
+      enabled: true
+
   # --- PostgreSQL connection (dev defaults match docker-compose.yml) --------
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:orderdb}
@@ -58,6 +65,12 @@ spring:
           use_second_level_cache: true
           region:
             factory_class: jcache
+        # PR #30 - pin the JSR-107 provider to Ehcache: Redisson also ships a
+        # JCache provider on the classpath, and an ambiguous CachingProvider
+        # lookup would fail Hibernate's session-factory startup.
+        javax:
+          cache:
+            provider: org.ehcache.jsr107.EhcacheCachingProvider
         jakarta.persistence.sharedCache.mode: ENABLE_SELECTIVE
 
   # --- PR #28: application-level cache ----------------------------------------
@@ -66,6 +79,14 @@ spring:
   # the dev/prod profiles (or SPRING_CACHE_TYPE=redis) - see those files.
   cache:
     type: simple
+
+  # --- Redis connection (used by the PR #28 cache and the PR #30 Redisson
+  # distributed lock). Defaults match the docker-compose redis service; only
+  # contexts that actually reach Redis pay any connection cost.
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 server:
   # SERVER_PORT env var overridable - useful for tests / running multiple instances.

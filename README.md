@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #29 (Resilience Patterns) — merged ✅ (next: PR #30 Virtual Threads)**
+> **Status: PR #30 (Virtual Threads & Concurrency) — in progress on `feature/PR-30-virtual-threads`**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -1134,6 +1134,44 @@ clients - circuit breaker, retry, bulkhead and rate limiting with Resilience4j.
    pool (thread-pool bulkhead), so a payment backlog cannot consume the whole
    app server. Retry sits *inside* the circuit breaker so each logical request
    is one breaker record - attempts retry within it.
+
+## PR #30 — Virtual Threads & Concurrency
+
+**Aspect learned:** Java 21 virtual threads let a server hold thousands of
+concurrent operations cheaply - plus the locks (local and distributed) that
+keep shared state safe while they run.
+
+### Deliverables
+- [x] `spring.threads.virtual.enabled: true` - the web server is configured to
+      serve requests on virtual threads (setting asserted in tests)
+- [x] 100 simultaneous "buy the last unit" requests over virtual threads -
+      exactly ONE winner (`VirtualThreadsIntegrationTest`)
+- [x] Structured fan-out (`DashboardService`): three independent DB aggregates
+      run concurrently on a virtual-thread executor and join before returning
+      (structured-concurrency idiom; `StructuredTaskScope` is its JDK 22+ form)
+- [x] Distributed lock with Redisson (`DistributedLockService`): mutual
+      exclusion across threads AND instances, lease-based crash recovery
+- [x] `ReentrantLock` replacing `synchronized`: `FairSequenceAllocator`
+      (fair, explicit, reliable release) proven by a 100×100 unit test
+- [x] Performance/concurrency comparison tests live alongside the lock tests
+
+### Key questions answered
+1. **What are virtual threads?** Threads scheduled by the JVM onto a few carrier
+   platform threads. A blocking call parks the virtual thread (cost ~KB) instead
+   of an OS thread (~MB), so "one thread per request" finally scales to very
+   high concurrency - and code stays simple and synchronous.
+2. **Structured concurrency / fan-out?** Independent subtasks (counts, sums) run
+   in parallel and ALL must finish before the operation returns; no orphan work
+   leaks past the scope. We model it with try-with-resources on a virtual-thread
+   executor; JDK 22's `StructuredTaskScope` is the same idea built in.
+3. **Local vs distributed locks?** `synchronized`/`ReentrantLock` only protect
+   one JVM. When multiple instances share state, a Redis lock (Redisson) is the
+   coordination point - and a lease means a crashed holder can never deadlock
+   the system (verified by the crash-recovery test).
+4. **Why ReentrantLock over synchronized?** Explicit lock/unlock with `finally`,
+   fairness control, tryLock - behaviours a `synchronized` block cannot express.
+   Virtual threads make lock CONTENTION visible again, so picking the right lock
+   granularity matters more than ever.
 
 ---
 
