@@ -13,6 +13,10 @@ spring:
   application:
     name: order-management-api
 
+  # PR #33 - how long in-flight requests may run after graceful shutdown starts.
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
   # PR #30 - serve requests on Java 21 VIRTUAL threads instead of platform
   # threads: the container can hold far more concurrent connections because
   # each request costs only a small stack instead of a full OS thread.
@@ -112,6 +116,9 @@ spring:
 server:
   # SERVER_PORT env var overridable - useful for tests / running multiple instances.
   port: ${SERVER_PORT:8080}
+  # PR #33 - graceful shutdown: stop accepting new work, let in-flight
+  # requests finish up to the timeout below (spring.lifecycle.timeout...).
+  shutdown: graceful
 
 management:
   endpoints:
@@ -123,6 +130,10 @@ management:
     health:
       # Detailed health is handy in dev; restrict before production (later PR).
       show-details: always
+      # PR #33 - expose /actuator/health/liveness and /actuator/health/readiness
+      # for the Kubernetes probes.
+      probes:
+        enabled: true
   # PR #32 - OpenTelemetry tracing. Disabled by default so ordinary contexts
   # never start an exporter; dev/prod profiles enable it (docker-compose Jaeger).
   tracing:

@@ -86,6 +86,34 @@ services:
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
 
+  # PR #33 - the API itself, built from the multi-stage Dockerfile. It joins
+  # the compose network so the other services resolve by name (postgres/redis/
+  # kafka/jaeger) - exactly what the dev profile expects.
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: order-management-api
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/liveness >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
 volumes:
   order-postgres-data:
   order-redis-data:
