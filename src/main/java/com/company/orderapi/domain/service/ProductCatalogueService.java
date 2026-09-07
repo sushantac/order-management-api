@@ -4,6 +4,7 @@ import com.company.orderapi.api.dto.OrderMapper;
 import com.company.orderapi.api.dto.ProductResponse;
 import com.company.orderapi.domain.Product;
 import com.company.orderapi.domain.repository.ProductRepository;
+import io.micrometer.core.annotation.Timed;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -48,6 +49,8 @@ public class ProductCatalogueService {
      */
     @Cacheable(cacheNames = CACHE_NAME, key = "#id")
     @Transactional(readOnly = true)
+    @Timed(value = "product.get", description = "Time to read a product",
+            percentiles = 0.95)
     public ProductResponse get(Long id) {
         return products.findById(id)
                 .map(OrderMapper::toProductResponse)

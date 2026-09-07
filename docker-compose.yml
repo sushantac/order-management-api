@@ -51,6 +51,7 @@ services:
   # Topics are auto-created; the outbox publisher and consumer only activate
   # when app.kafka.enabled=true (dev/prod profiles).
   kafka:
+    # PR #31 - single-node KRaft for the order-event bus.
     image: apache/kafka:3.7.0
     container_name: order-api-kafka
     ports:
@@ -72,6 +73,18 @@ services:
       interval: 10s
       timeout: 10s
       retries: 12
+
+  # PR #32 - Jaeger all-in-one (trace collector + UI). The API exports OTLP
+  # traces when management.tracing.enabled=true; UI at http://localhost:16686.
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: order-api-jaeger
+    ports:
+      - "16686:16686"   # UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
 
 volumes:
   order-postgres-data:

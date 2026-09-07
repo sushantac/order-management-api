@@ -41,3 +41,8 @@ app:
   kafka:
     # PR #31 - production publishes order events to the provisioned Kafka.
     enabled: true
+
+management:
+  # PR #32 - production ships traces to the OTLP/Jaeger collector.
+  tracing:
+    enabled: true

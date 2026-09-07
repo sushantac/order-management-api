@@ -16,6 +16,7 @@ import com.company.orderapi.domain.repository.ProductRepository;
 import com.company.orderapi.messaging.OrderPlacedMessage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.annotation.Timed;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -73,6 +74,8 @@ public class OrderService {
             retryFor = OptimisticLockingFailureException.class,
             maxAttempts = 5,
             backoff = @Backoff(delay = 20))
+    @Timed(value = "order.place", description = "Time to place an order",
+            percentiles = 0.95)
     public Order placeOrder(Long customerId, List<OrderLine> lines) {
         Customer customer = customers.findById(customerId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown customer " + customerId));
