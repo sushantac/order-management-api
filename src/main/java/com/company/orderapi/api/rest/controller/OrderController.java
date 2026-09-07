@@ -5,9 +5,12 @@ import com.company.orderapi.api.dto.OrderRequest;
 import com.company.orderapi.api.dto.OrderResponse;
 import com.company.orderapi.domain.Order;
 import com.company.orderapi.domain.OrderStatus;
+import com.company.orderapi.domain.idempotency.IdempotencyService;
 import com.company.orderapi.domain.repository.OrderRepository;
 import com.company.orderapi.domain.service.OrderService;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -45,22 +48,55 @@ public class OrderController {
 
     private final OrderService orderService;
     private final OrderRepository orders;
+    private final IdempotencyService idempotency;
+    private final ObjectMapper objectMapper;
 
-    public OrderController(OrderService orderService, OrderRepository orders) {
+    public OrderController(OrderService orderService, OrderRepository orders,
+                           IdempotencyService idempotency, ObjectMapper objectMapper) {
         this.orderService = orderService;
         this.orders = orders;
+        this.idempotency = idempotency;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping
     @Transactional
-    public ResponseEntity<OrderResponse> create(@Valid @RequestBody OrderRequest request) {
-        Order order = orderService.placeOrder(request.customerId(),
-                request.items().stream()
+    public ResponseEntity<OrderResponse> create(
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletRequest request,
+            @Valid @RequestBody OrderRequest requestBody) {
+        // PR #24: same Idempotency-Key -> replay the stored response instead of
+        // executing the (expensive) write a second time.
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            var stored = idempotency.find(idempotencyKey);
+            if (stored.isPresent()) {
+                OrderResponse replay = fromStored(stored.get());
+                return ResponseEntity.status(stored.get().status()).body(replay);
+            }
+        }
+
+        Order order = orderService.placeOrder(requestBody.customerId(),
+                requestBody.items().stream()
                         .map(i -> new OrderService.OrderLine(i.productId(), i.quantity()))
                         .toList());
+        OrderResponse response = OrderMapper.toOrderResponse(order);
+
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            idempotency.record(idempotencyKey, request.getMethod(),
+                    request.getRequestURI(), HttpStatus.CREATED.value(), response);
+        }
         return ResponseEntity
                 .created(URI.create("/api/v1/orders/" + order.getId()))
-                .body(OrderMapper.toOrderResponse(order));
+                .body(response);
+    }
+
+    private OrderResponse fromStored(IdempotencyService.StoredResponse stored) {
+        try {
+            JsonNode node = idempotency.parseStoredBody(stored.body());
+            return objectMapper.treeToValue(node, OrderResponse.class);
+        } catch (Exception e) {
+            throw new IllegalStateException("Stored idempotent response could not be replayed", e);
+        }
     }
 
     @PostMapping("/bulk")
