@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #26 (Security: OAuth2 & JWT) — in progress on `feature/PR-26-security`**
+> **Status: PR #26 (Security: OAuth2 & JWT) — merged ✅ (next: PR #27 PII & GDPR)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
