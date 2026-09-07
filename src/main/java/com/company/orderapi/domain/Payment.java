@@ -22,6 +22,12 @@ import java.time.LocalDateTime;
  *
  * <p>PR #4: {@code Order.payment} declares {@code cascade = CascadeType.ALL}
  * towards this entity, so persisting/removing an Order carries its Payment.
+ *
+ * <p>PR #27 - PCI-DSS scope control: this row stores NO cardholder data -
+ * no PAN, no CVV, no cardholder name, no expiry. The payment provider (the
+ * {@code SimulatedPaymentGateway}) only returns a token/transaction id, which
+ * is all the domain needs. If the API never sees or stores card data, its PCI
+ * DSS compliance scope collapses to nearly nothing.
  */
 @Entity
 @Table(name = "payments")

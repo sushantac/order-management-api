@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #26 (Security: OAuth2 & JWT) — merged ✅ (next: PR #27 PII & GDPR)**
+> **Status: PR #27 (PII & GDPR) — in progress on `feature/PR-27-pii-gdpr`**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -21,6 +21,7 @@ auditing, security, event-driven, Kubernetes, ...).
 | Migration  | Liquibase                      | Schema versioning (PR #2)  |
 | API        | REST (GraphQL later)           | Dual API approach          |
 | Security   | Spring Security + OAuth2 RS    | JWT scopes + API keys (PR #26) |
+| Privacy    | PII masking + GDPR endpoints   | Erasure/portability/audit (PR #27) |
 
 ---
 
@@ -1018,6 +1019,51 @@ validates JWTs, maps scopes to authorities and protects endpoints declaratively.
    `app.security.enabled=false` (kept off so all 77 pre-security tests still run
    unchanged); the new dedicated test turns security **on** and drives it with a
    locally-signed token and the API key.
+
+## PR #27 — PII & GDPR
+
+**Aspect learned:** personal data is protected at every boundary - in logs, in
+API responses, and by GDPR subject-rights endpoints backed by an audit trail.
+
+### Deliverables
+- [x] `PiiMasker` + `SensitiveDataSerializer` (Jackson) - DTO fields tagged
+      `@MaskedPii` are masked for callers WITHOUT the privileged `pii_read`
+      scope / API key (`PiiAccessDecider`)
+- [x] `PiiRedactionFilter` - request/response bodies are masked BEFORE they
+      reach the logs (log sink policy, independent of caller rights)
+- [x] GDPR right to erasure: `DELETE /api/v1/customers/{id}/data` - DELETES a
+      customer without history, ANONYMIZES one whose orders must be retained
+      (Art. 17(3)); idempotent
+- [x] GDPR portability: `GET /api/v1/customers/{id}/portability` - full
+      machine-readable JSON export (Art. 20)
+- [x] Compliance audit trail: new `audit_log` table (Liquibase #07) records
+      WHO did WHAT to WHICH customer - even after the customer row is erased;
+      details never contain raw PII
+- [x] PCI-DSS: payments table proven (by test) to store no cardholder data;
+      `Payment`/`PaymentMethod` document the tokenised, out-of-scope design
+- [x] GDPR actions require `pii_write`/`pii_read` scopes (403 for everyday
+      scopes); every action is audited
+- [x] Tests: unit (masking/redaction rules, serializer scope logic) + 6-test
+      `GdprPiiIntegrationTest` + schema tests - **all green**
+
+### Key questions answered
+1. **What is PII and why mask it in responses?** Names/e-mails/phones are
+   personal data (GDPR). The default read scope (`order_read`) gets a masked
+   view; only a deliberately stronger `pii_read` scope (or the machine key)
+   sees raw values - least privilege per field class.
+2. **Why redact logs separately?** A support engineer with log access is NOT an
+   authorised data consumer. Logs must be safe for everyone who may read them,
+   so bodies are scrubbed regardless of the caller's own access rights.
+3. **DELETE vs anonymise (Art. 17)?** The right to erasure yields to legal
+   retention obligations. Customers with order history are anonymised (fields
+   overwritten with `erased-<id>@erased.invalid`), which keeps history usable
+   while unlinking the person.
+4. **Why an audit trail with no FK?** Accountability (Art. 5(2)) requires
+   records of processing. The audit row must survive a physical erasure, hence
+   no FK and no PII inside the detail - GDPR applies to the audit trail too.
+5. **What does PCI-DSS compliant payment handling look like here?** The API
+   never sees a card number: the payment gateway returns only a transaction
+   reference, and the schema is *test-enforced* to never add cardholder columns.
 
 ---
 
