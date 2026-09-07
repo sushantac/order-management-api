@@ -33,5 +33,7 @@
     <include file="v1.0/05_create_event_store.sql" relativeToChangelogFile="true"/>
     <!-- PR #24: idempotency keys for safe retries of writes. -->
     <include file="v1.0/06_create_idempotency_keys.sql" relativeToChangelogFile="true"/>
+    <!-- PR #27: compliance audit trail for GDPR subject-rights actions. -->
+    <include file="v1.0/07_create_audit_log.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

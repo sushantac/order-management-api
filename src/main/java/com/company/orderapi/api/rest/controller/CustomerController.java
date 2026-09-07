@@ -7,6 +7,9 @@ import com.company.orderapi.api.dto.OrderMapper;
 import com.company.orderapi.api.dto.Update;
 import com.company.orderapi.domain.Customer;
 import com.company.orderapi.domain.repository.CustomerRepository;
+import com.company.orderapi.security.pii.PiiAccessDecider;
+import com.company.orderapi.security.pii.PiiMasker;
+import com.company.orderapi.security.pii.PiiType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -93,9 +96,11 @@ public class CustomerController {
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("id", customer.getId());
-        payload.put("email", customer.getEmail());
-        payload.put("fullName", customer.getFullName());
-        payload.put("phoneNumber", customer.getPhoneNumber());
+        // PR #27 - this endpoint builds the payload by hand (no DTO serializer),
+        // so the PII policy is applied explicitly per value.
+        payload.put("email", pii(PiiType.EMAIL, customer.getEmail()));
+        payload.put("fullName", pii(PiiType.NAME, customer.getFullName()));
+        payload.put("phoneNumber", pii(PiiType.PHONE, customer.getPhoneNumber()));
 
         if (include.orElse("").contains("orders")) {
             payload.put("orders", customer.getOrders().stream()
@@ -106,7 +111,8 @@ public class CustomerController {
         }
         if (include.orElse("").contains("addresses")) {
             payload.put("addresses", customer.getAddresses().stream()
-                    .map(a -> Map.of("city", a.getCity(), "street", a.getStreet()))
+                    .map(a -> Map.of("city", a.getCity(),
+                            "street", pii(PiiType.NAME, a.getStreet())))
                     .toList());
         }
 
@@ -153,5 +159,10 @@ public class CustomerController {
             throw e;
         }
         return ResponseEntity.noContent().build();
+    }
+
+    /** PR #27 - PII policy helper for the hand-built {@code /view} payload. */
+    private String pii(PiiType type, String raw) {
+        return PiiAccessDecider.shouldMask() ? PiiMasker.mask(raw, type) : raw;
     }
 }

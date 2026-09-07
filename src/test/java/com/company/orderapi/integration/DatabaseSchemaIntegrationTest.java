@@ -67,8 +67,8 @@ class DatabaseSchemaIntegrationTest {
         assertThat(tables)
                 .contains("customers", "addresses", "orders", "order_items",
                         "products", "categories", "product_categories", "payments",
-                        "event_store", "idempotency_keys")
-                .hasSize(10); // 8 domain tables + event store (PR #19) + idempotency (PR #24)
+                        "event_store", "idempotency_keys", "audit_log")
+                .hasSize(11); // 8 domain + event store (PR #19) + idempotency (PR #24) + audit log (PR #27)
     }
 
     @Test
@@ -142,6 +142,27 @@ class DatabaseSchemaIntegrationTest {
                             fk.getKey(), fk.getValue())
                     .isTrue();
         }
+    }
+
+    @Test
+    void paymentsTableNeverStoresCardholderData() {
+        // PR #27 - PCI-DSS scope control, proven at the schema level: no card
+        // number (PAN), CVV, cardholder name or expiry column may ever exist.
+        List<String> columns = jdbc.queryForList("""
+                        SELECT column_name
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public' AND table_name = 'payments'
+                        """,
+                String.class);
+        assertThat(columns)
+                .as("payments table columns must never hold cardholder data")
+                .noneMatch(column -> matchesCardData(column));
+    }
+
+    private boolean matchesCardData(String column) {
+        String c = column.toLowerCase();
+        return c.contains("card") || c.contains("pan") || c.contains("cvv")
+                || c.contains("cvc") || c.contains("expiry") || c.contains("cardholder");
     }
 
     private boolean hasIndexStartingWith(String table, String column) {
