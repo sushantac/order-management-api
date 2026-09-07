@@ -14,6 +14,7 @@ auditing, security, event-driven, Kubernetes, ...).
 > · [Good & bad retrospective](docs/good-and-bad/README.md) (honest self-review + fix roadmap)
 > · [🔁 Redo blueprint](docs/next-time/README.md) (refined spec/instructions to run the journey again, better)
 > · [Solution design](docs/design/README.md) (architecture & detailed design, as a lead designer would write it)
+> · [🎯 Mastery toolkit](docs/others/README.md) (12-week plan, self-assessment, flashcards, labs, playbook)
 
 ---
 
