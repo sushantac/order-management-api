@@ -42,13 +42,16 @@ public class OrderService {
     private final ProductRepository products;
     private final OrderRepository orders;
     private final PaymentGateway paymentGateway;
+    private final ProductCatalogueService catalogue;
 
     public OrderService(CustomerRepository customers, ProductRepository products,
-                        OrderRepository orders, PaymentGateway paymentGateway) {
+                        OrderRepository orders, PaymentGateway paymentGateway,
+                        ProductCatalogueService catalogue) {
         this.customers = customers;
         this.products = products;
         this.orders = orders;
         this.paymentGateway = paymentGateway;
+        this.catalogue = catalogue;
     }
 
     /** One requested order line: product + quantity (DTOs arrive in PR #21). */
@@ -76,6 +79,9 @@ public class OrderService {
                                 + " (available " + product.getStockQuantity() + ")");
             }
             product.setStockQuantity(product.getStockQuantity() - line.quantity()); // versioned UPDATE
+            // PR #28 - stock changed outside the catalogue: evict the cached
+            // ProductResponse so the next GET reflects the new stock level.
+            catalogue.evict(line.productId());
             BigDecimal lineTotal = product.getPrice().multiply(BigDecimal.valueOf(line.quantity()));
             order.addItem(new OrderItem(product, line.quantity(), product.getPrice()));
             total = total.add(lineTotal);

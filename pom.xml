@@ -118,6 +118,18 @@
         </dependency>
 
         <!--
+          PR #28 - Redis client (Lettuce) for the application-level cache.
+          @EnableCaching + @Cacheable/@CacheEvict on the product read/write paths;
+          Redis is activated per-profile (dev/prod) or by setting
+          SPRING_CACHE_TYPE=redis. The DEFAULT profile keeps 'simple'
+          (in-memory) so unit/integration tests need no Redis.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!--
           PR #25 - OpenAPI / Swagger UI. Generates the machine-readable spec at
           /v3/api-docs and serves the UI at /swagger-ui.html (springdoc 2.x is
           the Boot 3.x line).

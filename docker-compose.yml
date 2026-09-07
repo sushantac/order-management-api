@@ -1,8 +1,8 @@
 # ============================================================================
-# PR #2 - local infrastructure.
+# PR #2 - local infrastructure. PR #28 adds Redis for the application cache.
 # ----------------------------------------------------------------------------
-# PostgreSQL 16 for local development. Further services (Redis in PR #28,
-# Kafka in PR #31, ...) will be added as separate services here.
+# PostgreSQL 16 for local development; Redis 7 as the distributed cache used
+# by the @Cacheable product catalogue (profile: dev, or SPRING_CACHE_TYPE=redis).
 #
 # DEV ONLY credentials - real environments inject secrets via GitOps/secrets
 # managers, never via docker-compose.
@@ -30,5 +30,23 @@ services:
       timeout: 5s
       retries: 10
 
+  # PR #28 - Redis 7 for the application-level product cache. AOF persistence
+  # keeps cached values across container restarts (learning setup; real caches
+  # are loss-tolerant and usually run without it).
+  redis:
+    image: redis:7-alpine
+    container_name: order-api-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - order-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
 volumes:
   order-postgres-data:
+  order-redis-data:

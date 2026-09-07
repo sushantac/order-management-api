@@ -22,3 +22,17 @@ logging:
     org.hibernate.SQL: WARN
     org.hibernate.orm.jdbc.bind: WARN
     org.hibernate.stat: WARN
+
+# PR #28 - production caches product reads in the shared Redis (infra-provided,
+# secrets via GitOps). Same TTL as dev; set SPRING_CACHE_TYPE=simple to disable.
+spring:
+  cache:
+    type: redis
+    redis:
+      time-to-live: 10m
+      key-prefix: orderapi:
+      cache-null-values: false
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}

@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #27 (PII & GDPR) — merged ✅ (next: PR #28 Caching/Redis)**
+> **Status: PR #28 (Caching: Redis) — in progress on `feature/PR-28-caching-redis`**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -1064,6 +1064,42 @@ API responses, and by GDPR subject-rights endpoints backed by an audit trail.
 5. **What does PCI-DSS compliant payment handling look like here?** The API
    never sees a card number: the payment gateway returns only a transaction
    reference, and the schema is *test-enforced* to never add cardholder columns.
+
+## PR #28 — Caching (Redis)
+
+**Aspect learned:** cache-aside with Spring's cache abstraction and Redis - where
+caching pays, how invalidation keeps it correct, and how to observe it.
+
+### Deliverables
+- [x] Redis 7 service in `docker-compose.yml` (AOF persistence + healthcheck)
+- [x] `spring-boot-starter-data-redis` + `RedisConfig` (`@EnableCaching`)
+- [x] `ProductCatalogueService` - `@Cacheable` on product retrieval (DTOs,
+      never entities), `@CacheEvict(allEntries)` on catalogue writes
+- [x] Stock writers (order placement + the locking services) call
+      `ProductCatalogueService.evict(id)` so cached stock never goes stale
+- [x] TTL config: `spring.cache.redis.time-to-live: 10m` + key prefix in the
+      dev/prod profiles (default profile stays `simple` so tests need no Redis)
+- [x] Cache hit/miss metrics: `RedisCacheMetrics` publishes Redis server
+      `keyspace_hits`/`keyspace_misses` as Micrometer gauges
+- [x] `CachingRedisIntegrationTest` (4 tests, real Testcontainers Redis): miss →
+      populate → hit, write eviction, delete eviction, TTL applied, stock
+      freshness after order placement, metric gauges present
+
+### Key questions answered
+1. **What is caching and why use it?** Repeat reads (a hot product page) hit a
+   fast in-memory/remote store instead of the DB. Cache the *read model* (the
+   `ProductResponse` DTO) - entities carry session/lazy state and must not leave
+   the persistence context.
+2. **What is cache-aside?** On a read: check cache; on hit return, on miss load
+   from the DB and populate the cache with a TTL. Spring expresses it as
+   `@Cacheable` - the method body only runs on a miss.
+3. **How do you invalidate cache?** Writes that change cached state must evict
+   it. Catalogue writes evict all entries; stock changes made by the order and
+   locking services evict the single product entry - otherwise a cached stock
+   level silently oversells the next buyer.
+4. **How do you know it works?** Redis counts every key lookup
+   (`keyspace_hits`/`keyspace_misses`); publishing those as Micrometer gauges
+   makes cache effectiveness visible on `/actuator/metrics` and in dashboards.
 
 ---
 

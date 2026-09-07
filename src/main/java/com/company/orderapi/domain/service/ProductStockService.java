@@ -27,9 +27,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductStockService {
 
     private final ProductRepository productRepository;
+    private final ProductCatalogueService catalogue;
 
-    public ProductStockService(ProductRepository productRepository) {
+    public ProductStockService(ProductRepository productRepository,
+                               ProductCatalogueService catalogue) {
         this.productRepository = productRepository;
+        this.catalogue = catalogue;
     }
 
     @Transactional
@@ -46,6 +49,8 @@ public class ProductStockService {
             throw new IllegalStateException("Insufficient stock for product " + productId);
         }
         product.setStockQuantity(product.getStockQuantity() - quantity);
+        // PR #28 - invalidate the cached catalogue entry for this product.
+        catalogue.evict(productId);
         // Dirty checking: at commit Hibernate runs
         //   UPDATE products SET stock_quantity=?, version=? WHERE id=? AND version=?
         // 0 rows matched => optimistic lock conflict => @Retryable re-runs.

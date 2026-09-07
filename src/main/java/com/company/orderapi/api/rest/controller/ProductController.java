@@ -3,8 +3,8 @@ package com.company.orderapi.api.rest.controller;
 import com.company.orderapi.api.dto.OrderMapper;
 import com.company.orderapi.api.dto.ProductRequest;
 import com.company.orderapi.api.dto.ProductResponse;
-import com.company.orderapi.domain.Product;
 import com.company.orderapi.domain.repository.ProductRepository;
+import com.company.orderapi.domain.service.ProductCatalogueService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,16 +21,22 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 
 /**
- * PR #22 - REST CRUD for products (catalogue is read-heavy; price/stock live here).
+ * PR #22 - REST CRUD for products (catalogue is read-heavy; price/stock live
+ * here). PR #28 - reads and writes go through {@link ProductCatalogueService},
+ * where {@code @Cacheable}/{@code @CacheEvict} implement the cache-aside
+ * pattern; the list stays on the repository (paged and uncached on purpose).
  */
 @RestController
 @RequestMapping("/api/v1/products")
 public class ProductController {
 
     private final ProductRepository products;
+    private final ProductCatalogueService catalogue;
 
-    public ProductController(ProductRepository products) {
+    public ProductController(ProductRepository products,
+                             ProductCatalogueService catalogue) {
         this.products = products;
+        this.catalogue = catalogue;
     }
 
     @GetMapping
@@ -40,37 +46,28 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ProductResponse get(@PathVariable Long id) {
-        return products.findById(id)
-                .map(OrderMapper::toProductResponse)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown product " + id));
+        return catalogue.get(id);
     }
 
     @PostMapping
     public ResponseEntity<ProductResponse> create(@Valid @RequestBody ProductRequest request) {
-        Product product = products.saveAndFlush(new Product(
-                request.name(), request.price(), request.stockQuantity()));
-        product.setDescription(request.description());
-        products.flush();
+        ProductResponse created = catalogue.create(request.name(), request.price(),
+                request.stockQuantity(), request.description());
         return ResponseEntity
-                .created(URI.create("/api/v1/products/" + product.getId()))
-                .body(OrderMapper.toProductResponse(product));
+                .created(URI.create("/api/v1/products/" + created.id()))
+                .body(created);
     }
 
     @PutMapping("/{id}")
-    public ProductResponse update(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
-        Product product = products.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown product " + id));
-        product.setName(request.name());
-        product.setDescription(request.description());
-        product.setPrice(request.price());
-        product.setStockQuantity(request.stockQuantity());
-        products.flush();
-        return OrderMapper.toProductResponse(product);
+    public ProductResponse update(@PathVariable Long id,
+                                  @Valid @RequestBody ProductRequest request) {
+        return catalogue.update(id, request.name(), request.price(),
+                request.stockQuantity(), request.description());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        products.deleteById(id);
+        catalogue.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
