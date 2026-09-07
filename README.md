@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #31 (Kafka: Event-Driven) — in progress on `feature/PR-31-kafka-events`**
+> **Status: PR #31 (Kafka: Event-Driven) — merged ✅ (next: PR #32 Observability)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
