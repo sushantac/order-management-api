@@ -7,6 +7,9 @@ auditing, security, event-driven, Kubernetes, ...).
 
 > **Status: 🎉 All 35 learning PRs merged to `develop` — journey complete (final suite: 120 tests, 0 failures).**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
+>
+> 📚 **Study guides:** [Learning document](docs/learnings/README.md) (concepts → real code)
+> · [Interview cheat sheets](docs/interview-cheat-sheets/README.md) (rapid revision pack)
 
 ---
 
