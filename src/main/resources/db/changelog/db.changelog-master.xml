@@ -35,5 +35,7 @@
     <include file="v1.0/06_create_idempotency_keys.sql" relativeToChangelogFile="true"/>
     <!-- PR #27: compliance audit trail for GDPR subject-rights actions. -->
     <include file="v1.0/07_create_audit_log.sql" relativeToChangelogFile="true"/>
+    <!-- PR #31: transactional outbox for reliable Kafka publishing. -->
+    <include file="v1.0/08_create_outbox.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

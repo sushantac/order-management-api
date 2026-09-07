@@ -36,3 +36,8 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT:6379}
+
+app:
+  kafka:
+    # PR #31 - production publishes order events to the provisioned Kafka.
+    enabled: true

@@ -88,6 +88,27 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
+  # --- PR #31: Kafka event bus ----------------------------------------------
+  # Nothing CONNECTS unless app.kafka.enabled=true (dev/prod; integration
+  # tests override both), keeping non-Kafka test contexts broker-free.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: order-service
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.company.orderapi.*
+    listener:
+      # MANUAL: the listener acknowledges AFTER it finished processing the
+      # message (see OrderEventConsumer) - explicit offset control.
+      ack-mode: manual
+
 server:
   # SERVER_PORT env var overridable - useful for tests / running multiple instances.
   port: ${SERVER_PORT:8080}
@@ -126,6 +147,16 @@ app:
     cors:
       allowed-origins:
         - http://localhost:3000
+  kafka:
+    # Master switch: brokers are only contacted when this is true.
+    enabled: false
+    topics:
+      order-events: order-events
+      order-events-dlt: order-events.DLT
+  outbox:
+    poll-millis: 2000
+    batch-size: 50
+    scheduler-enabled: true
 
 # --- PR #29: resilience (Resilience4j) --------------------------------------
 # Patterns configured via properties so a change never needs a redeploy:
