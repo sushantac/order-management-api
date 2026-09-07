@@ -1274,3 +1274,23 @@ what a running system is actually doing.
 ---
 
 *Built one pull request at a time — each teaching one API development aspect.*
+
+## PR #33 — Docker & Kubernetes
+
+**Aspect learned:** ship the app as a container and run it on Kubernetes - probes,
+resources, scaling, TLS, secrets and per-environment overlays.
+
+### Deliverables
+- [x] Multi-stage `Dockerfile` (Maven build -> slim JRE runtime, non-root user)
+- [x] `docker-compose.yml` now runs EVERYTHING: postgres + redis + kafka + jaeger + `api` (health-gated)
+- [x] `k8s/base`: Deployment (resources/limits, non-root, liveness/readiness/startup probes), Service, ConfigMap, HPA, Ingress with cert-manager TLS
+- [x] Kustomize overlays: `dev`, `test`, `uat`, `staging`, `prod` (prefixes, replicas, image tags, active Spring profile)
+- [x] Secrets: plaintext DEV sample + SEALED secret sample + `docs/k8s/deploy.md`
+- [x] Graceful shutdown (`server.shutdown: graceful`, 20s drain) + probe endpoints (`/actuator/health/liveness|readiness`)
+
+### Key questions answered
+1. **What is containerization?** One immutable artifact (image) runs identically on a laptop and in prod; the multi-stage build keeps the image small and dependency-free.
+2. **Why Kubernetes?** Declarative ops: desired state in git (`deployment.yaml`), the cluster converges to it. Probes tell it when a pod is alive (`liveness`), ready (`readiness`) or still starting (`startup`).
+3. **Probes:** readiness gates traffic, liveness restarts a wedged pod, startup prevents kill-during-cold-start. Probes must use their OWN endpoints - readiness failing must never restart a healthy-but-busy pod (that is why we split them).
+
+---
