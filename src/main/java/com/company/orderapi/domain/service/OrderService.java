@@ -8,9 +8,14 @@ import com.company.orderapi.domain.Payment;
 import com.company.orderapi.domain.PaymentMethod;
 import com.company.orderapi.domain.PaymentStatus;
 import com.company.orderapi.domain.Product;
+import com.company.orderapi.domain.outbox.OutboxEntry;
+import com.company.orderapi.domain.outbox.OutboxRepository;
 import com.company.orderapi.domain.repository.CustomerRepository;
 import com.company.orderapi.domain.repository.OrderRepository;
 import com.company.orderapi.domain.repository.ProductRepository;
+import com.company.orderapi.messaging.OrderPlacedMessage;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -43,15 +48,20 @@ public class OrderService {
     private final OrderRepository orders;
     private final PaymentGateway paymentGateway;
     private final ProductCatalogueService catalogue;
+    private final OutboxRepository outbox;
+    private final ObjectMapper objectMapper;
 
     public OrderService(CustomerRepository customers, ProductRepository products,
                         OrderRepository orders, PaymentGateway paymentGateway,
-                        ProductCatalogueService catalogue) {
+                        ProductCatalogueService catalogue,
+                        OutboxRepository outbox, ObjectMapper objectMapper) {
         this.customers = customers;
         this.products = products;
         this.orders = orders;
         this.paymentGateway = paymentGateway;
         this.catalogue = catalogue;
+        this.outbox = outbox;
+        this.objectMapper = objectMapper;
     }
 
     /** One requested order line: product + quantity (DTOs arrive in PR #21). */
@@ -99,6 +109,22 @@ public class OrderService {
         payment.setPaymentDate(LocalDateTime.now());
         order.setPayment(payment);
         orders.saveAndFlush(order); // flush inside tx so the test sees the graph
+
+        // PR #31 - OUTBOX: append the event in the SAME transaction as the
+        // order. Kafka is told about it later by the polling publisher; if this
+        // transaction rolls back, the outbox row rolls back with it.
+        OrderPlacedMessage message = new OrderPlacedMessage(order.getId(),
+                order.getOrderNumber(), order.getTotalAmount(), order.getOrderDate());
+        outbox.saveAndFlush(OutboxEntry.pending("Order", String.valueOf(order.getId()),
+                "OrderPlacedMessage", write(message)));
         return order;
+    }
+
+    private String write(OrderPlacedMessage message) {
+        try {
+            return objectMapper.writeValueAsString(message);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Could not serialise outbox event", e);
+        }
     }
 }

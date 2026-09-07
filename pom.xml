@@ -159,6 +159,22 @@
         </dependency>
 
         <!--
+          PR #31 - Spring for Apache Kafka: outbox publisher (KafkaTemplate),
+          order-event listener (@KafkaListener, manual ack) and DLT handling.
+          Only activated when app.kafka.enabled=true (see messaging classes);
+          the outbox TABLE is written on every order in ALL profiles.
+        -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!--
           PR #25 - OpenAPI / Swagger UI. Generates the machine-readable spec at
           /v3/api-docs and serves the UI at /swagger-ui.html (springdoc 2.x is
           the Boot 3.x line).

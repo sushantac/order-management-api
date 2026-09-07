@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #30 (Virtual Threads & Concurrency) — merged ✅ (next: PR #31 Kafka)**
+> **Status: PR #31 (Kafka: Event-Driven) — in progress on `feature/PR-31-kafka-events`**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -1172,6 +1172,46 @@ keep shared state safe while they run.
    fairness control, tryLock - behaviours a `synchronized` block cannot express.
    Virtual threads make lock CONTENTION visible again, so picking the right lock
    granularity matters more than ever.
+
+## PR #31 — Kafka (Event-Driven)
+
+**Aspect learned:** decouple producers from consumers with a message broker,
+publish *reliably* via a transactional outbox, and consume with explicit
+offsets + dead-letter handling.
+
+### Deliverables
+- [x] Kafka broker (KRaft, no ZooKeeper) in `docker-compose.yml`
+- [x] Transactional OUTBOX: `outbox` table (Liquibase #08) written in the SAME
+      transaction as the order (`OrderService.placeOrder`)
+- [x] Polling publisher (`OutboxPublisher` + `@Scheduled`): claims PENDING rows
+      with `FOR UPDATE SKIP LOCKED`, publishes, marks PUBLISHED only after the
+      broker acks - at-least-once; failed rows retry with an attempt counter
+- [x] `OrderEventProducer` (KafkaTemplate, JSON `OrderPlacedMessage` - no PII)
+- [x] `OrderEventConsumer` with MANUAL offset management (`Acknowledgment`) and
+      defensive validation
+- [x] Dead-letter topic: poison messages (e.g. missing total) are rejected,
+      never acked, and routed to `order-events.DLT` by a `DefaultErrorHandler`
+- [x] Integration tests with `@EmbeddedKafka`: outbox→broker→consumer round
+      trip, PUBLISHED state, DLT routing
+- [x] `app.kafka.enabled` master switch - dev/prod talk to the broker, the 100+
+      non-Kafka test contexts never touch one
+
+### Key questions answered
+1. **What is event-driven architecture?** Producers publish facts ("order
+   placed") to a broker; consumers react in their own time. The order service
+   no longer calls downstream systems directly - decoupling + scaling come
+   from the topic in between.
+2. **Why the outbox pattern?** Kafka cannot join the DB transaction. Writing
+   the event to an outbox table in the SAME transaction gives atomicity (event
+   exists iff the order exists); the publisher then relays it to Kafka - the
+   standard reliable-publish pattern.
+3. **Delivery semantics?** This pipeline is at-least-once: a crashed publisher
+   or a missing ack redelivers. That is why consumers must be idempotent and
+   why manual acks + a dead-letter topic matter - poison never stalls the
+   group.
+4. **Schema note:** the payload is a JSON record (dependency-light, keeps the
+   learning repo easy to run); switching to Avro/Protobuf + Schema Registry is
+   a serializer/dependency swap behind the same topic contract.
 
 ---
 

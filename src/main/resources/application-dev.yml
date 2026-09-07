@@ -25,3 +25,8 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+
+app:
+  kafka:
+    # PR #31 - dev talks to the docker-compose Kafka broker.
+    enabled: true
