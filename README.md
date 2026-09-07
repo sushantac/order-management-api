@@ -13,6 +13,7 @@ auditing, security, event-driven, Kubernetes, ...).
 > · [Functional documentation](docs/business/README.md) (what each feature does, endpoint by endpoint)
 > · [Good & bad retrospective](docs/good-and-bad/README.md) (honest self-review + fix roadmap)
 > · [🔁 Redo blueprint](docs/next-time/README.md) (refined spec/instructions to run the journey again, better)
+> · [Solution design](docs/design/README.md) (architecture & detailed design, as a lead designer would write it)
 
 ---
 
