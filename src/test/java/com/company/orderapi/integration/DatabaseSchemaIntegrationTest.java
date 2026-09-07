@@ -67,8 +67,8 @@ class DatabaseSchemaIntegrationTest {
         assertThat(tables)
                 .contains("customers", "addresses", "orders", "order_items",
                         "products", "categories", "product_categories", "payments",
-                        "event_store")
-                .hasSize(9); // 8 domain tables + the PR #19 event store
+                        "event_store", "idempotency_keys")
+                .hasSize(10); // 8 domain tables + event store (PR #19) + idempotency (PR #24)
     }
 
     @Test

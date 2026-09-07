@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #23 (Validation) — merged ✅ (next: PR #24)**
+> **Status: PR #24 (Exception Handling & Idempotency) — merged ✅ (next: PR #25)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -914,6 +914,33 @@ rules and validation groups.
 3. **What are validation groups for?** The SAME request type is validated
    differently per operation: creation requires `fullName.length() >= 2`, while
    an update (already-valid data) is lenient — proven by the test.
+
+---
+
+## PR #24 — Exception Handling & Idempotency
+
+**Aspect learned:** RFC 7807 Problem Details and write idempotency via
+`Idempotency-Key`.
+
+### Deliverables
+- [x] `GlobalExceptionHandler` (`@RestControllerAdvice`) producing RFC 7807
+      `ProblemDetail`
+- [x] Java 21 pattern-matching `switch` → error catalog `(status, code, hint)`
+- [x] `idempotency_keys` table (Liquibase), `IdempotencyKeyRepository`,
+      `IdempotencyService`
+- [x] `Idempotency-Key` header on `POST /orders` — replays instead of re-executing
+- [x] Tests: ProblemDetail shapes + retry scenarios (no duplicate orders)
+
+### Key questions answered
+1. **What is RFC 7807 Problem Details?** A standard error body
+   (`type/title/status/detail` + extensions). Clients branch on `code` and read
+   `hint` instead of string-matching ad-hoc messages.
+2. **Why `@ControllerAdvice`?** One place converts every exception family to an
+   HTTP response — controllers stay clean and the mapping is testable.
+3. **What is idempotency and why does it matter?** Clients retry on timeouts;
+   without idempotency a retried `POST /orders` double-charges. The client key
+   makes retries replay the FIRST result (proven: same key → same body and
+   order count unchanged; a second key creates a second order).
 
 ---
 
