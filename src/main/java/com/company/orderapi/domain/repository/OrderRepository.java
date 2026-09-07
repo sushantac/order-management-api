@@ -29,6 +29,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     record AmountRange(BigDecimal minTotal, BigDecimal maxTotal) {
     }
 
+    /** PR #30 - grand total of every order (used by the fan-out dashboard). */
+    @Query("select coalesce(sum(o.totalAmount), 0) from Order o")
+    BigDecimal totalRevenue();
+
     /** Native-SQL projection: customer email + total money spent. */
     interface CustomerSpend {
         String getEmail();
