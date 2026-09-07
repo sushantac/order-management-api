@@ -36,7 +36,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
         "integration.database.tag=RestControllerIntegrationTest",
-        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false"
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
+        // Security is exercised in SecurityIntegrationTest (PR #26).
+        "app.security.enabled=false"
 })
 class RestControllerIntegrationTest {
 

@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #25 (OpenAPI Documentation) — merged ✅ (next: PR #26)**
+> **Status: PR #26 (Security: OAuth2 & JWT) — in progress on `feature/PR-26-security`**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -20,6 +20,7 @@ auditing, security, event-driven, Kubernetes, ...).
 | Database   | PostgreSQL 16                  | Primary + event store (from PR #2) |
 | Migration  | Liquibase                      | Schema versioning (PR #2)  |
 | API        | REST (GraphQL later)           | Dual API approach          |
+| Security   | Spring Security + OAuth2 RS    | JWT scopes + API keys (PR #26) |
 
 ---
 
@@ -97,6 +98,15 @@ Verify it is up:
 ```bash
 curl http://localhost:8080/actuator/health
 # {"status":"UP", ... "db":{"status":"UP"}, ...}
+```
+
+Since PR #26 every other endpoint requires authentication. Machine/script clients
+send the dev API key; interactive clients send an OAuth2 bearer JWT signed with
+`app.security.jwt-secret` (scopes `order_read` / `order_write`):
+
+```bash
+curl -H "X-API-Key: dev-api-key-orderapi" http://localhost:8080/api/v1/customers?page=0\&size=5
+curl -H "Authorization: Bearer <jwt>" http://localhost:8080/api/v1/customers?page=0\&size=5
 ```
 
 ---
@@ -971,6 +981,43 @@ deprecate it gracefully.
 4. **Versioning & deprecation strategy:** URLs stay `/api/v1/...`; breaking
    changes live under `/api/v2/...` so both can coexist. Deprecated endpoints
    advertise RFC 8594 `Deprecation` + `Sunset` headers before removal.
+
+## PR #26 — Security (OAuth2 & JWT)
+
+**Aspect learned:** turn a Spring Boot API into an OAuth2 *resource server* that
+validates JWTs, maps scopes to authorities and protects endpoints declaratively.
+
+### Deliverables
+- [x] `spring-boot-starter-oauth2-resource-server` + `spring-security-test` deps
+- [x] `SecurityConfig` - stateless resource server (JWT decoder, CORS, HSTS/CSP
+      security headers, permit-list for health + OpenAPI docs)
+- [x] `SecurityProperties` binds `app.security.*` (master on/off switch for tests,
+      HS256 secret, dev API key, CORS origins)
+- [x] `JwtAuthenticationConverter` maps the OAuth2 `scope` claim → `SCOPE_*`
+      authorities; `ApiKeyAuthenticationFilter` accepts `X-API-Key` for machine
+      clients (`ROLE_API_KEY`)
+- [x] `@PreAuthorize` guards: create order requires `order_write`, read customer
+      requires `order_read` (disabled when `app.security.enabled=false`)
+- [x] `GlobalExceptionHandler` maps security failures to RFC 7807 bodies
+      (401 `AUTHENTICATION_REQUIRED`, 403 `ACCESS_DENIED`)
+- [x] `SecurityIntegrationTest` (no token → 401, wrong scope → 403, full flow,
+      API key, CORS preflight, security headers) - **6 tests**
+- [x] OpenAPI declares `bearer-jwt` + `api-key` security schemes
+
+### Key questions answered
+1. **What does a resource server do?** It never issues tokens - it *validates*
+   bearer JWTs it receives, using the issuer's key material, and decides which
+   requests to admit. The API stays decoupled from the IdP.
+2. **Why scopes → `SCOPE_*` authorities?** Spring Security's
+   `hasAuthority('SCOPE_order_write')` idiom is the OAuth2 convention; the JWT
+   `scope` claim becomes real `GrantedAuthority`s via the converter.
+3. **HS256 vs asymmetric JWT in production?** Here we sign locally with a shared
+   secret (learning/dev). A real deployment validates RS256 signatures against
+   the IdP's published JWKS and pins `iss`/`aud`.
+4. **How are method rules tested?** Each existing MockMvc test sets
+   `app.security.enabled=false` (kept off so all 77 pre-security tests still run
+   unchanged); the new dedicated test turns security **on** and drives it with a
+   locally-signed token and the API key.
 
 ---
 

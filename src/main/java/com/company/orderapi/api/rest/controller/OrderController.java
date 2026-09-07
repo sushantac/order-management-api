@@ -20,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -70,6 +71,7 @@ public class OrderController {
             @ApiResponse(responseCode = "400", description = "Validation or payment failure"),
             @ApiResponse(responseCode = "409", description = "Stock conflict / data conflict")
     })
+    @PreAuthorize("@securityProperties.enabled == false or hasAnyAuthority('SCOPE_order_write', 'ROLE_API_KEY')")
     @PostMapping
     @Transactional
     public ResponseEntity<OrderResponse> create(

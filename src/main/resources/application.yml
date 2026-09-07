@@ -84,3 +84,17 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
     org.hibernate.stat: DEBUG
+
+# --- PR #26: security -------------------------------------------------------
+app:
+  security:
+    # Master switch (kept off by non-security integration tests).
+    enabled: true
+    # HS256 signing secret for the LEARNING journey (>= 32 chars). Production
+    # validates against the authorization server's published JWK set instead.
+    jwt-secret: local-learning-secret-change-me-please-32chars
+    # Simple API-key fallback for scripts/machine clients (PR #26).
+    api-key: dev-api-key-orderapi
+    cors:
+      allowed-origins:
+        - http://localhost:3000
