@@ -34,16 +34,17 @@ For each PR, provide:
 3. **Questions Answered**: The learning objectives
 4. **Next Steps**: What the next PR will cover
 
-## Cost & Scheduling Policy (added 2026-09-07)
-To keep compute/API costs down, expensive work MUST only run during OFF-PEAK
-hours:
-- **Peak (do NOT run heavy work)**: weekdays 09:00–18:00 local time
+## Cost & Scheduling Policy (added 2026-09-07, updated 2026-09-07)
+To keep compute/API costs down, DO NOT work on this project AT ALL during
+peak hours - neither heavy nor light work:
+- **Peak (NO work of any kind)**: weekdays 09:00–18:00 local time
   (Australia/Sydney, UTC+10/+11).
-- **Off-peak (heavy work allowed)**: all other hours + weekends.
-- "Heavy work" = running `./mvnw` builds/tests, starting containers, creating/
-  merging PRs, and other compute-expensive or paid-API actions.
-- During peak hours: only lightweight, non-executing assistance is allowed
-  (planning, reading code, drafting) - then WAIT for the next off-peak window
-  to execute.
-- If a task is interrupted by the peak window starting mid-build, let the
-  in-flight command finish; do not start NEW heavy work until off-peak.
+- **Off-peak (work allowed)**: all other hours + weekends.
+- During peak hours: do not run builds/tests/containers, do not merge PRs,
+  do not create branches, and do not perform "light" project work (reads,
+  planning, drafting, doc edits, commits/pushes). If a request arrives during
+  peak, reply that work is deferred to the next off-peak window and WAIT.
+- If an off-peak task is interrupted by the peak window starting, finish only
+  the in-flight command that is already running; do not START anything new.
+- Exception: this very policy instruction may be updated on request at any
+  time (it is the user's explicit instruction).
