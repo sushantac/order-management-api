@@ -105,3 +105,46 @@ app:
     cors:
       allowed-origins:
         - http://localhost:3000
+
+# --- PR #29: resilience (Resilience4j) --------------------------------------
+# Patterns configured via properties so a change never needs a redeploy:
+#   1. circuit breaker on the payment gateway (open after too many failures /
+#      slow calls, half-open probes, then closed again),
+#   2. retry with EXPONENTIAL backoff (200ms, 400ms, ...) inside the breaker,
+#   3. thread-pool bulkhead isolating gateway calls from the DB thread pool,
+#   4. rate limiter per API-key client (see ApiKeyRateLimiterFilter).
+resilience4j:
+  circuitbreaker:
+    instances:
+      paymentGateway:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 2s
+        slow-call-rate-threshold: 50
+        wait-duration-in-open-state: 5s
+        permitted-number-of-calls-in-half-open-state: 2
+  retry:
+    instances:
+      paymentGateway:
+        max-attempts: 3
+        wait-duration: 200ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - com.company.orderapi.domain.service.PaymentFailedException
+  ratelimiter:
+    instances:
+      apiKey:
+        # Generous default; per-key buckets are demonstrated/tested with a
+        # smaller override in RateLimitIntegrationTest.
+        limit-for-period: 1000
+        limit-refresh-period: 1m
+        timeout-duration: 0s
+  thread-pool-bulkhead:
+    instances:
+      paymentGateway:
+        core-thread-pool-size: 1
+        max-thread-pool-size: 2
+        queue-capacity: 5
+        keep-alive-duration: 1m
