@@ -130,6 +130,23 @@
         </dependency>
 
         <!--
+          PR #29 - Resilience4j: circuit breaker + retry + bulkhead around the
+          payment gateway, and rate limiting per API key. resilience4j-spring-boot3
+          auto-configures the registries from the resilience4j.* properties;
+          spring-boot-starter-aop is required by Resilience4j's annotations
+          (and the existing Spring Retry support).
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+
+        <!--
           PR #25 - OpenAPI / Swagger UI. Generates the machine-readable spec at
           /v3/api-docs and serves the UI at /swagger-ui.html (springdoc 2.x is
           the Boot 3.x line).

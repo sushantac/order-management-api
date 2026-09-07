@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #28 (Caching: Redis) — merged ✅ (next: PR #29 Resilience)**
+> **Status: PR #29 (Resilience Patterns) — in progress on `feature/PR-29-resilience`**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -1100,6 +1100,40 @@ caching pays, how invalidation keeps it correct, and how to observe it.
 4. **How do you know it works?** Redis counts every key lookup
    (`keyspace_hits`/`keyspace_misses`); publishing those as Micrometer gauges
    makes cache effectiveness visible on `/actuator/metrics` and in dashboards.
+
+## PR #29 — Resilience Patterns
+
+**Aspect learned:** protect the API from a flaky dependency and from noisy
+clients - circuit breaker, retry, bulkhead and rate limiting with Resilience4j.
+
+### Deliverables
+- [x] `resilience4j-spring-boot3` + `spring-boot-starter-aop` dependencies
+- [x] Circuit breaker on the payment gateway - opens after repeated failures or
+      SLOW calls (latency chaos), fast-fails while open, recovers in half-open
+- [x] Retry with EXPONENTIAL backoff (200ms → 400ms → ...) INSIDE the breaker
+- [x] Thread-pool bulkhead isolates gateway work on its own small pool
+      (1 core / 2 max / queue 5), so slow charges cannot starve the DB threads
+- [x] Per-API-key rate limiting (`ApiKeyRateLimiterFilter`) with
+      `X-RateLimit-Remaining`, `X-RateLimit-Reset` and `Retry-After` headers
+- [x] Chaos testing: deterministic failure + latency injection drives the real
+      Resilience4j stack (`ResilienceChaosIntegrationTest`)
+- [x] Load test script: `scripts/k6-load-test.js` (with thresholds)
+- [x] `RateLimitIntegrationTest` (per-key buckets, 429 behaviour)
+
+### Key questions answered
+1. **What is a circuit breaker?** A state machine (CLOSED → OPEN → HALF_OPEN)
+   in front of a dependency call. Too many failures/slow calls trip it OPEN and
+   subsequent calls fail *fast* instead of queueing on a sick provider; after a
+   wait it lets one probe through and closes again on success.
+2. **How does rate limiting work?** A client takes a permit from a bucket that
+   refills every window (here: 60s). We bucket **per API key**, so one noisy
+   client cannot exhaust another's quota; the standard headers tell clients how
+   many permits remain and when to retry.
+3. **What is a bulkhead?** Named after ship compartments: a failure in one
+   compartment cannot sink the ship. Gateway calls run on their own small thread
+   pool (thread-pool bulkhead), so a payment backlog cannot consume the whole
+   app server. Retry sits *inside* the circuit breaker so each logical request
+   is one breaker record - attempts retry within it.
 
 ---
 
