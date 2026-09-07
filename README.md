@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #33 (Docker & Kubernetes) — merged ✅ (next: PR #34 CI/CD & GitOps)**
+> **Status: PR #34 (CI/CD & GitOps) — merged ✅ (next: PR #35 Enterprise)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
