@@ -1,3 +1,6 @@
+> **Requested artefact** - produced as an explicitly requested deliverable
+> ("consider I asked for all these"). Canonical home: `docs/not-asked/after-asking/`.
+
 # 02 — Security & Privacy Pack
 
 ## Part A — STRIDE threat model (per component)

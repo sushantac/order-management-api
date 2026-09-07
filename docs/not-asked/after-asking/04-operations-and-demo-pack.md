@@ -1,3 +1,6 @@
+> **Requested artefact** - produced as an explicitly requested deliverable
+> ("consider I asked for all these"). Canonical home: `docs/not-asked/after-asking/`.
+
 # 04 — Operations & Demo Pack
 
 ## Runbook A — Local + dev deploy

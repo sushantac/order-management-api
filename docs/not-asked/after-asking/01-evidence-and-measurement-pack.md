@@ -1,3 +1,6 @@
+> **Requested artefact** - produced as an explicitly requested deliverable
+> ("consider I asked for all these"). Canonical home: `docs/not-asked/after-asking/`.
+
 # 01 — Evidence & Measurement Pack
 
 Goal: every claim about this project that can be measured, **is** measured.

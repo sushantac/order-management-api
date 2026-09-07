@@ -1,3 +1,6 @@
+> **Requested artefact** - produced as an explicitly requested deliverable
+> ("consider I asked for all these"). Canonical home: `docs/not-asked/after-asking/`.
+
 # 03 — Architecture & Onboarding Pack
 
 ## Part A — Renderable C4 diagrams

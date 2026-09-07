@@ -1,26 +1,28 @@
-# docs/not-asked — The Gap You Almost Missed
+# docs/not-asked — Gap Materials (Concept Index)
 
-These are the materials that were *not explicitly requested* during the build
-but that an expert-in-the-making (or the reviewer of this repo) would expect to
-find. They turn the project from "a well-documented learning repo" into one
-with **evidence, security artefacts, shareable architecture, operations
-runbooks, and an execution path** — the things that separate "I studied it"
-from "I can stand behind it".
+Materials that were **not part of the original build request** but that an
+expert-in-the-making (or a reviewer) would expect. The detailed packs live in
+the **[after-asking/](after-asking/README.md)** subfolder - where they sit as
+explicitly requested deliverables ("consider I asked for all these"). This page
+is the concept index and the "why".
 
-| Pack | What it adds |
+| Concept | Detailed pack (requested) |
 |---|---|
-| [01-evidence-and-measurement-pack.md](01-evidence-and-measurement-pack.md) | Coverage & static-analysis plan, load-test runbook, per-PR changelog template — quantified, not anecdotal |
-| [02-security-and-privacy-pack.md](02-security-and-privacy-pack.md) | STRIDE threat model, DPIA-style data-flow + PII inventory + lawful basis, security review checklist |
-| [03-architecture-and-onboarding-pack.md](03-architecture-and-onboarding-pack.md) | Rendered C4 diagrams (Mermaid/PlantUML), as-built ADR register, 20-minute repo navigation map |
-| [04-operations-and-demo-pack.md](04-operations-and-demo-pack.md) | Deploy / incident / rollback / backup-restore runbooks + a 10-minute guided interview demo script |
-| [05-closure-execution-plan.md](05-closure-execution-plan.md) | The "execute everything" plan from `docs/next-time/06` adapted here, with an evidence log |
+| Prove the quality with numbers | [after-asking/01-evidence-and-measurement-pack.md](after-asking/01-evidence-and-measurement-pack.md) |
+| Show the security & privacy work | [after-asking/02-security-and-privacy-pack.md](after-asking/02-security-and-privacy-pack.md) |
+| Make the architecture shareable | [after-asking/03-architecture-and-onboarding-pack.md](after-asking/03-architecture-and-onboarding-pack.md) |
+| Run and present it | [after-asking/04-operations-and-demo-pack.md](after-asking/04-operations-and-demo-pack.md) |
+| Prove it by executing everything | [after-asking/05-closure-execution-plan.md](after-asking/05-closure-execution-plan.md) |
 
-## How the packs relate to the rest of the docs
-- **Reference** (what): `docs/business`, `docs/design`
-- **Learning** (why): `docs/learnings`, `docs/interview-cheat-sheets`
-- **Honesty & redo** (improve): `docs/good-and-bad`, `docs/next-time`
-- **Mastery** (practice): `docs/others`
-- **This folder** (prove it): evidence, security, diagrams, runbooks, execution
+## Why these five?
+1. **Reference** (what): `docs/business`, `docs/design`.
+2. **Learning** (why): `docs/learnings`, `docs/interview-cheat-sheets`.
+3. **Honesty & redo**: `docs/good-and-bad`, `docs/next-time`.
+4. **Mastery** (practice): `docs/others`.
+5. **These packs** (prove it): evidence, security artefacts, diagrams/ADRs,
+   runbooks, and the execution plan that makes everything claimable.
 
-Use `05` as the "definition of done" for claiming this project is
-production-credible, then let `01`'s numbers and `02`'s analysis speak for you.
+Use `after-asking/05` as the definition of done for "production-credible", then
+let the evidence (`after-asking/01`) and the security analysis
+(`after-asking/02`) speak for the project.
+

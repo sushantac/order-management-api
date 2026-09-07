@@ -1,3 +1,6 @@
+> **Requested artefact** - produced as an explicitly requested deliverable
+> ("consider I asked for all these"). Canonical home: `docs/not-asked/after-asking/`.
+
 # 05 — Closure Execution Plan (prove it, then present it)
 
 This is the adaptation of `docs/next-time/06` for the **current** repo: it is
