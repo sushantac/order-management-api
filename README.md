@@ -12,6 +12,7 @@ auditing, security, event-driven, Kubernetes, ...).
 > · [Interview cheat sheets](docs/interview-cheat-sheets/README.md) (rapid revision pack)
 > · [Functional documentation](docs/business/README.md) (what each feature does, endpoint by endpoint)
 > · [Good & bad retrospective](docs/good-and-bad/README.md) (honest self-review + fix roadmap)
+> · [🔁 Redo blueprint](docs/next-time/README.md) (refined spec/instructions to run the journey again, better)
 
 ---
 
