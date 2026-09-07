@@ -106,6 +106,17 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!--
+          PR #25 - OpenAPI / Swagger UI. Generates the machine-readable spec at
+          /v3/api-docs and serves the UI at /swagger-ui.html (springdoc 2.x is
+          the Boot 3.x line).
+        -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+
         <!-- Actuator: /actuator/health etc. for local dev and later K8s probes. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

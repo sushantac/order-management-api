@@ -10,6 +10,9 @@ import com.company.orderapi.domain.repository.OrderRepository;
 import com.company.orderapi.domain.service.OrderService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -59,6 +62,14 @@ public class OrderController {
         this.objectMapper = objectMapper;
     }
 
+    @Operation(summary = "Place an order",
+            description = "Deducts stock, creates the order and charges the payment "
+                    + "in ONE transaction. Idempotent when an Idempotency-Key is sent.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Order created"),
+            @ApiResponse(responseCode = "400", description = "Validation or payment failure"),
+            @ApiResponse(responseCode = "409", description = "Stock conflict / data conflict")
+    })
     @PostMapping
     @Transactional
     public ResponseEntity<OrderResponse> create(

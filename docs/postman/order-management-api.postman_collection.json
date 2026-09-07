@@ -1,0 +1,36 @@
+{
+  "info": {
+    "name": "Order Management API",
+    "description": "Collection export for the Order Management API (PR #25).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create order",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/orders",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "orders"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerId\": 1,\n  \"items\": [ { \"productId\": 1, \"quantity\": 2 } ]\n}"
+        }
+      }
+    },
+    {
+      "name": "List customers",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/customers?page=0&size=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "customers"]
+        }
+      }
+    }
+  ]
+}
