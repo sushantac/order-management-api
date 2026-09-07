@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #28 (Caching: Redis) — in progress on `feature/PR-28-caching-redis`**
+> **Status: PR #28 (Caching: Redis) — merged ✅ (next: PR #29 Resilience)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
