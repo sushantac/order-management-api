@@ -10,6 +10,7 @@ auditing, security, event-driven, Kubernetes, ...).
 >
 > 📚 **Study guides:** [Learning document](docs/learnings/README.md) (concepts → real code)
 > · [Interview cheat sheets](docs/interview-cheat-sheets/README.md) (rapid revision pack)
+> · [Functional documentation](docs/business/README.md) (what each feature does, endpoint by endpoint)
 
 ---
 
