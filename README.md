@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #35 (Enterprise Features) — in progress on `feature/PR-35-enterprise`**
+> **Status: 🎉 All 35 learning PRs merged to `develop` — journey complete (final suite: 120 tests, 0 failures).**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
