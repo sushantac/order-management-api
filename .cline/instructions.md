@@ -37,9 +37,9 @@ For each PR, provide:
 ## Cost & Scheduling Policy (added 2026-09-07, updated 2026-09-07)
 To keep compute/API costs down, DO NOT work on this project AT ALL during
 peak hours - neither heavy nor light work:
-- **Peak (NO work of any kind)**: weekdays 09:00–18:00 local time
-  (Australia/Sydney, UTC+10/+11).
-- **Off-peak (work allowed)**: all other hours + weekends.
+- **Peak (NO work of any kind)**: weekdays 11:00–14:00 and 16:00–20:00
+  Australia/Sydney (AEST/AEDT) — this is the true token-costing window.
+- **Off-peak (work allowed)**: all other times on weekdays + all weekend.
 - During peak hours: do not run builds/tests/containers, do not merge PRs,
   do not create branches, and do not perform "light" project work (reads,
   planning, drafting, doc edits, commits/pushes). If a request arrives during

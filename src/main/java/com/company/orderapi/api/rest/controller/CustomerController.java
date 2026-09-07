@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -49,6 +50,7 @@ public class CustomerController {
     }
 
     /** GET /api/v1/customers?page=0&size=10&sort=fullName,asc */
+    @PreAuthorize("@securityProperties.enabled == false or hasAnyAuthority('SCOPE_order_read', 'ROLE_API_KEY')")
     @GetMapping
     public Page<CustomerResponse> list(Pageable pageable) {
         return customers.findAll(pageable).map(OrderMapper::toCustomerResponse);
@@ -67,6 +69,7 @@ public class CustomerController {
                 .body(customers.findAll(pageable).map(OrderMapper::toCustomerResponse));
     }
 
+    @PreAuthorize("@securityProperties.enabled == false or hasAnyAuthority('SCOPE_order_read', 'ROLE_API_KEY')")
     @GetMapping("/{id}")
     public CustomerResponse get(@PathVariable Long id) {
         return customers.findById(id)

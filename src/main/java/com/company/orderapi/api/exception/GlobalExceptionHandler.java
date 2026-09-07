@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -23,14 +25,39 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /**
+     * PR #26 - method-security denials (e.g. missing scope) must map to 403
+     * even though the generic handler below would classify them as 500.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ProblemDetail> handle(AccessDeniedException ex) {
+        return problem(HttpStatus.FORBIDDEN, "ACCESS_DENIED",
+                "Access denied", "Your token/role lacks the required authority.", ex);
+    }
+
+    /**
+     * PR #26 - an invalid/expired bearer token surfaces as an authentication
+     * error; keep the body in the same Problem Detail style.
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ProblemDetail> handle(AuthenticationException ex) {
+        return problem(HttpStatus.UNAUTHORIZED, "AUTHENTICATION_REQUIRED",
+                "Authentication required", "Send a valid bearer token or API key.", ex);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handle(Exception ex) {
         ErrorSpec spec = classify(ex);
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(spec.status(), messageOf(ex));
-        problem.setTitle(spec.title());
-        problem.setProperty("code", spec.code());
-        problem.setProperty("hint", spec.hint());
-        return ResponseEntity.status(spec.status())
+        return problem(spec.status(), spec.code(), spec.title(), spec.hint(), ex);
+    }
+
+    private ResponseEntity<ProblemDetail> problem(HttpStatus status, String code,
+                                                  String title, String hint, Exception ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, messageOf(ex));
+        problem.setTitle(title);
+        problem.setProperty("code", code);
+        problem.setProperty("hint", hint);
+        return ResponseEntity.status(status)
                 .contentType(MediaType.APPLICATION_PROBLEM_JSON)
                 .body(problem);
     }
