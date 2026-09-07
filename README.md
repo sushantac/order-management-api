@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #34 (CI/CD & GitOps) — merged ✅ (next: PR #35 Enterprise)**
+> **Status: PR #35 (Enterprise Features) — in progress on `feature/PR-35-enterprise`**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -1272,6 +1272,38 @@ a cluster is a reviewable commit - not a button.
 3. **What is progressive delivery?** Ship in stages (test → uat → staging →
    prod) watching SLOs at each step; feature flags let a capability ride along
    dark until it is safe to switch on.
+
+## PR #35 — Enterprise Features (optional slice)
+
+**Aspect learned:** the features enterprises ask for next - and which are worth
+building vs documenting as a design decision.
+
+### Deliverables (implemented)
+- [x] Internationalization: `i18n/messages*.properties` + `MessageSource` +
+      `/api/v1/messages/{key}` resolving by `Accept-Language` (de/en tested)
+- [x] CSV export endpoint `GET /api/v1/products/export.csv`, gated behind the
+      `csvExport` feature flag
+- [x] Feature flags (PR #34) now drive a real endpoint switch
+- [x] Enterprise design notes (`docs/enterprise/enterprise.md`): multi-tenancy
+      (discriminator vs schema-per-tenant), developer portal / API-key self-
+      service, scheduled jobs & background processing strategy, DB backup
+      strategy with point-in-time recovery and restore drills
+
+### Key questions answered
+1. **What is multi-tenancy?** Serving many customers from one app. Discriminator
+   column = cheap, shared schema; schema-per-tenant = strongest isolation,
+   highest ops cost. We document both and pick discriminator + row-level
+   filtering for this product, with schema-per-tenant as the upgrade path.
+2. **How do you internationalize?** Never embed user-visible strings in code -
+   keys + resource bundles, resolved by locale (Accept-Language). This slice
+   proves the plumbing; real products add per-field validation messages next.
+3. **Progressive delivery recap:** flags (PR #34) + staged promotion (PR #33/34)
+   mean a capability can ship dark, then light gradually - watching the SLOs
+   from PR #32 the whole way.
+
+### Learning journey complete
+35 learning PRs, one concept each, all merged to `develop` with tests green at
+every step. Final suite: **120 tests, 0 failures.**
 
 ---
 
