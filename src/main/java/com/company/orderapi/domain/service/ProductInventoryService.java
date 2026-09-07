@@ -22,9 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductInventoryService {
 
     private final ProductRepository productRepository;
+    private final ProductCatalogueService catalogue;
 
-    public ProductInventoryService(ProductRepository productRepository) {
+    public ProductInventoryService(ProductRepository productRepository,
+                                   ProductCatalogueService catalogue) {
         this.productRepository = productRepository;
+        this.catalogue = catalogue;
     }
 
     /** PESSIMISTIC_WRITE: serializes stock decrements on the same row. */
@@ -36,6 +39,7 @@ public class ProductInventoryService {
             throw new IllegalStateException("Insufficient stock for product " + productId);
         }
         product.setStockQuantity(product.getStockQuantity() - quantity);
+        catalogue.evict(productId); // PR #28 - refresh the cached catalogue view
     }
 
     /**
@@ -68,6 +72,7 @@ public class ProductInventoryService {
             throw new IllegalStateException("Insufficient stock for product " + productId);
         }
         product.setStockQuantity(product.getStockQuantity() - quantity);
+        catalogue.evict(productId); // PR #28 - refresh the cached catalogue view
     }
 
     /**
@@ -99,6 +104,8 @@ public class ProductInventoryService {
         }
         from.setStockQuantity(from.getStockQuantity() - quantity);
         to.setStockQuantity(to.getStockQuantity() + quantity);
+        catalogue.evict(fromProductId); // PR #28 - both products changed stock
+        catalogue.evict(toProductId);
     }
 
     private void sleep(long millis) {

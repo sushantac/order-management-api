@@ -60,6 +60,13 @@ spring:
             factory_class: jcache
         jakarta.persistence.sharedCache.mode: ENABLE_SELECTIVE
 
+  # --- PR #28: application-level cache ----------------------------------------
+  # Default = 'simple' (ConcurrentHashMap): zero-infrastructure caching for the
+  # unit/integration test contexts. Redis is the real store and is activated by
+  # the dev/prod profiles (or SPRING_CACHE_TYPE=redis) - see those files.
+  cache:
+    type: simple
+
 server:
   # SERVER_PORT env var overridable - useful for tests / running multiple instances.
   port: ${SERVER_PORT:8080}

@@ -10,3 +10,18 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+
+  # PR #28 - dev runs the real distributed cache (docker-compose: redis service).
+  cache:
+    type: redis
+    redis:
+      # TTL: cached products expire after 10 minutes (cache-aside misses then
+      # re-populate from the DB). Short enough to bound staleness, long enough
+      # to absorb the read-heavy catalogue traffic.
+      time-to-live: 10m
+      key-prefix: orderapi:
+      cache-null-values: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
