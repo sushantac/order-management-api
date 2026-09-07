@@ -15,6 +15,7 @@ auditing, security, event-driven, Kubernetes, ...).
 > · [🔁 Redo blueprint](docs/next-time/README.md) (refined spec/instructions to run the journey again, better)
 > · [Solution design](docs/design/README.md) (architecture & detailed design, as a lead designer would write it)
 > · [🎯 Mastery toolkit](docs/others/README.md) (12-week plan, self-assessment, flashcards, labs, playbook)
+> · [✅ Not-asked gaps](docs/not-asked/README.md) (evidence, security pack, diagrams/ADRs, runbooks, closure plan)
 
 ---
 
