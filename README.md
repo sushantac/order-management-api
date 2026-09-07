@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #29 (Resilience Patterns) — in progress on `feature/PR-29-resilience`**
+> **Status: PR #29 (Resilience Patterns) — merged ✅ (next: PR #30 Virtual Threads)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
