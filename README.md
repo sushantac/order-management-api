@@ -5,7 +5,7 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: PR #24 (Exception Handling & Idempotency) — merged ✅ (next: PR #25)**
+> **Status: PR #25 (OpenAPI Documentation) — merged ✅ (next: PR #26)**
 > See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
 
 ---
@@ -941,6 +941,36 @@ rules and validation groups.
    without idempotency a retried `POST /orders` double-charges. The client key
    makes retries replay the FIRST result (proven: same key → same body and
    order count unchanged; a second key creates a second order).
+
+---
+
+## PR #25 — OpenAPI Documentation
+
+**Aspect learned:** document the API from code (springdoc), version it, and
+deprecate it gracefully.
+
+### Deliverables
+- [x] `springdoc-openapi-starter-webmvc-ui` dependency
+- [x] `OpenApiConfig` (title/version metadata) + `@Operation`/`@ApiResponse`
+      annotations on controllers
+- [x] Live spec at `/v3/api-docs`, Swagger UI at `/swagger-ui.html`
+- [x] Committed snapshot export: `docs/api/openapi.yaml`
+- [x] Postman collection export: `docs/postman/order-management-api.postman_collection.json`
+- [x] API versioning strategy (v1/v2 coexistence) + `Deprecation`/`Sunset`
+      headers on the deprecated alias (`GET /api/v1/customers/legacy`)
+- [x] `OpenApiIntegrationTest`
+
+### Key questions answered
+1. **Why document APIs?** The spec is the contract clients build against —
+   machine-readable docs keep it truthful and enable codegen/tooling.
+2. **What are OpenAPI & Swagger?** OpenAPI = the spec format; Swagger UI = the
+   interactive explorer springdoc generates from controllers/annotations.
+3. **How to generate docs from code?** springdoc introspects Spring MVC at
+   runtime (`/v3/api-docs`) and renders the UI — annotations enrich the
+   auto-detected model. No hand-maintained docs to rot.
+4. **Versioning & deprecation strategy:** URLs stay `/api/v1/...`; breaking
+   changes live under `/api/v2/...` so both can coexist. Deprecated endpoints
+   advertise RFC 8594 `Deprecation` + `Sunset` headers before removal.
 
 ---
 

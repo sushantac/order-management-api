@@ -54,6 +54,19 @@ public class CustomerController {
         return customers.findAll(pageable).map(OrderMapper::toCustomerResponse);
     }
 
+    /**
+     * PR #25 - demonstration of the versioning/deprecation strategy. This alias
+     * will be REMOVED in v2, so it advertises RFC 8594 deprecation headers:
+     * Deprecation: true + Sunset: <planned removal date>.
+     */
+    @GetMapping("/legacy")
+    public ResponseEntity<Page<CustomerResponse>> listLegacy(Pageable pageable) {
+        return ResponseEntity.ok()
+                .header("Deprecation", "true")
+                .header("Sunset", "2027-01-01")
+                .body(customers.findAll(pageable).map(OrderMapper::toCustomerResponse));
+    }
+
     @GetMapping("/{id}")
     public CustomerResponse get(@PathVariable Long id) {
         return customers.findById(id)

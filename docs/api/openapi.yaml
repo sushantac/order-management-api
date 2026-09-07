@@ -1,0 +1,48 @@
+openapi: 3.0.3
+info:
+  title: Order Management API
+  description: >-
+    Production-grade order management API built as a learning journey.
+    The live machine-readable spec is generated at /v3/api-docs (springdoc);
+    this file is a committed snapshot export for documentation/review.
+  version: v1
+paths:
+  /api/v1/orders:
+    post:
+      summary: Place an order
+      description: >-
+        Deducts stock, creates the order graph and charges payment in one
+        transaction. Idempotent when an Idempotency-Key header is supplied.
+      responses:
+        '201':
+          description: Order created
+        '400':
+          description: Validation or payment failure
+        '409':
+          description: Stock or data conflict
+  /api/v1/customers:
+    get:
+      summary: List customers (paginated & sortable)
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: size
+          in: query
+          schema:
+            type: integer
+        - name: sort
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Page of customers
+    post:
+      summary: Create a customer
+      responses:
+        '201':
+          description: Customer created
+        '400':
+          description: Validation failed
