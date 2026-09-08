@@ -1339,11 +1339,12 @@ JSON-RPC, and the security mindset of exposing a read-only AI surface.
 - [x] Business guide: `docs/business/11-mcp-ai-integration.md`
 
 ### Design decision
-The repo is pinned to Spring Boot 3.2 (Spring 6.1); official MCP Spring
-starters require Spring 6.2+. Rather than upgrade the stack or vendor an
-incompatible SDK, this PR implements the JSON-RPC wire subset directly and
-documents the upgrade path (official `mcp-spring-*` SDK on a supported Boot
-line, same tool contracts). Hand-rolled = fully owned + fully tested.
+The repo was pinned to Spring Boot 3.2 (Spring 6.1) at that time, while the
+official MCP Spring modules require Spring 6.2+. Rather than upgrade the stack
+mid-sequence, PR #36 implemented the JSON-RPC wire subset directly and
+documented the upgrade path. **PR #37 below does that upgrade and replaces this
+hand-rolled transport with the official `mcp-spring-webmvc` SDK** — same tools,
+same PII boundary, protocol correctness owned by the SDK.
 
 ### Key questions answered
 1. **Why MCP instead of more REST endpoints?** Assistants are best served by a
@@ -1354,6 +1355,46 @@ line, same tool contracts). Hand-rolled = fully owned + fully tested.
    side-effect discipline (idempotency, outbox, audit) later.
 3. **Is it production-grade MCP?** The subset is spec-conformant and tested,
    with honest limits (no resources/prompts/SSE) documented rather than hidden.
+
+---
+
+## PR #37 (bonus) — Official MCP Spring SDK (Spring Boot 3.4 upgrade)
+
+> Follow-up to PR #36: replace the hand-rolled JSON-RPC subset with the
+> **official MCP Java SDK** once the stack allowed it.
+
+**Aspect learned:** when a capability needs a newer framework minor, upgrade the
+platform deliberately — and how much correctness the official SDK buys you once
+you do (protocol negotiation, JSON-RPC, notifications, error contracts).
+
+### What changed
+- [x] **Spring Boot 3.2.1 → 3.4.1** (Spring Framework 6.2.1) — the version the
+      official `mcp-spring-webmvc` module is built against (Spring 6.2+ minimum)
+- [x] MCP server re-implemented on `io.modelcontextprotocol.sdk:0.18.4`:
+      `WebMvcStatelessServerTransport` (`POST /mcp`) + `McpServer.sync(...)` +
+      per-tool `SyncToolSpecification`s. Same read-only tools, same PII boundary
+- [x] ~200 lines of hand-rolled JSON-RPC deleted — the SDK now owns the protocol
+      (`initialize`, `tools/list`, `tools/call`, notifications, errors)
+- [x] Jackson bridge (`mcp-json-jackson2`) feeds the SDK the Spring-managed
+      `ObjectMapper`
+- [x] Tests now drive the app with the **official MCP Java client** against a
+      real Tomcat port + real Postgres (`McpServerSdkIntegrationTest`, 7 tests)
+- [x] Boot-3.4 collateral fixes: Micrometer Prometheus classes moved to
+      `io.micrometer.prometheusmetrics`; springdoc 2.3.0 → 2.7.0 (2.3.0 returns
+      500 on `/v3/api-docs` under Boot 3.4)
+
+### Key questions answered
+1. **Why upgrade the whole platform for one dependency?** Spring Boot versions
+   are a bundle — you cannot move one framework jar to 6.2 without aligning the
+   rest. The jump 3.2 → 3.4 was the smallest supported step that reached
+   Spring 6.2.1, and it is exactly what the MCP Spring module pins.
+2. **What did the official SDK give us?** Protocol version negotiation, JSON-RPC
+   2.0 framing, `tools/list` + `tools/call` handling, notifications and a
+   conformance-tested stateless Streamable-HTTP transport — all verified by
+   driving the server with the official client instead of hand-written curl.
+3. **Honest limits that remain:** tools-only (no resources/prompts), no JSON-RPC
+   batches, no sessions/SSE. Sessionful Claude Desktop-style clients are an
+   upgrade path (swap in `WebMvcStreamableServerTransportProvider`), not a bug.
 
 ---
 
@@ -1379,6 +1420,7 @@ line, same tool contracts). Hand-rolled = fully owned + fully tested.
 | 16 | Second Level Cache | 34 | CI/CD & GitOps |
 | 17 | DTO Projections | 35 | Enterprise Features (Optional) |
 | 18 | JPA Events & Listeners | 36 (bonus) | MCP Server (AI Integration) |
+| 37 (bonus) | Official MCP Spring SDK on Boot 3.4 (Spring 6.2) | | |
 
 ---
 
