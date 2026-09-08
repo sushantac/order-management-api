@@ -5,8 +5,8 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: 🎉 All 35 learning PRs merged to `develop` — journey complete (final suite: 120 tests, 0 failures).**
-> See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence.
+> **Status: 🎉 All 35 learning PRs + bonus PR #36 (MCP server) merged to `develop` — journey complete (final suite: 130 tests, 0 failures).**
+> See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence (plus the #36 MCP bonus).
 >
 > 📚 **Study guides:** [Learning document](docs/learnings/README.md) (concepts → real code)
 > · [Interview cheat sheets](docs/interview-cheat-sheets/README.md) (rapid revision pack)
