@@ -8,7 +8,7 @@ import com.company.orderapi.domain.service.OrderService;
 import com.company.orderapi.domain.service.PaymentGateway;
 import com.company.orderapi.domain.service.ProductCatalogueService;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;

@@ -5,8 +5,9 @@
   Aspect learned: Spring Boot project structure and dependency management.
 
   Key decisions:
-  1. Spring Boot 3.2.1 is pinned to match the learning spec. Spring Boot's
-     parent POM manages dependency versions ("starter" BOM), so we never
+  1. Spring Boot 3.4.1 is pinned (upgraded from 3.2.1 in PR #37 so the official
+     MCP Spring SDK can be adopted - it needs Spring Framework 6.2+). Spring
+     Boot's parent POM manages dependency versions ("starter" BOM), so we never
      hard-code third-party versions and stay upgrade-safe.
   2. Java 21 LTS is the language/bytecode target (records, pattern matching,
      virtual threads in later PRs). `maven.compiler.release` guarantees Java
@@ -26,11 +27,17 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- Spring Boot parent: brings dependency management + plugin versions. -->
+    <!--
+      Spring Boot parent: brings dependency management + plugin versions.
+      PR #37: 3.2.1 -> 3.4.1 so we can adopt the official MCP Java SDK Spring
+      transports (mcp-spring-webmvc 0.18.4 compiles against Spring Framework
+      6.2.1, which is exactly what Spring Boot 3.4.1 manages). Spring 6.2 is
+      the minimum for the MCP Spring modules.
+    -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.1</version>
+        <version>3.4.1</version>
         <relativePath/>
     </parent>
 
@@ -175,14 +182,35 @@
         </dependency>
 
         <!--
+          PR #36/37 - Model Context Protocol (AI assistant tools).
+          Official MCP Java SDK Spring integration (io.modelcontextprotocol.sdk).
+          mcp-spring-webmvc provides the Streamable-HTTP stateless transport and
+          REQUIRES Spring Framework 6.2.1+ (why Boot was upgraded to 3.4.1 in
+          PR #37). mcp-json-jackson2 bridges the SDK's JSON SPI to Jackson 2 so
+          the transport reuses the Spring-managed ObjectMapper. mcp-core (server
+          + client, JDK-HTTP transports) comes in transitively.
+        -->
+        <dependency>
+            <groupId>io.modelcontextprotocol.sdk</groupId>
+            <artifactId>mcp-spring-webmvc</artifactId>
+            <version>0.18.4</version>
+        </dependency>
+        <dependency>
+            <groupId>io.modelcontextprotocol.sdk</groupId>
+            <artifactId>mcp-json-jackson2</artifactId>
+            <version>0.18.4</version>
+        </dependency>
+
+        <!--
           PR #25 - OpenAPI / Swagger UI. Generates the machine-readable spec at
-          /v3/api-docs and serves the UI at /swagger-ui.html (springdoc 2.x is
-          the Boot 3.x line).
+          /v3/api-docs and serves the UI at /swagger-ui.html. 2.7.0 is the
+          springdoc line compatible with Spring Boot 3.4 (2.3.0 returned 500 on
+          /v3/api-docs after the PR #37 Boot upgrade).
         -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.3.0</version>
+            <version>2.7.0</version>
         </dependency>
 
         <!-- Actuator: /actuator/health etc. for local dev and later K8s probes. -->
