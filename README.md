@@ -1316,6 +1316,47 @@ every step. Final suite: **120 tests, 0 failures.**
 
 ---
 
+## PR #36 (bonus) — Model Context Protocol (MCP) Server
+
+> Requested after the journey as an extra: let an AI assistant *use* the API.
+
+**Aspect learned:** MCP — how an assistant discovers and calls tools over
+JSON-RPC, and the security mindset of exposing a read-only AI surface.
+
+### Deliverables (implemented)
+- [x] `POST /mcp` — minimal spec-conformant MCP server (JSON-only mode of the
+      Streamable HTTP transport): `initialize`, `ping`, `tools/list`,
+      `tools/call`, notifications, and JSON-RPC batch requests
+- [x] Read-only tools behind one interface (`McpTool`): `api_health`
+      (DB-free probe), `product_search` (catalogue by name), `order_status`
+      (order id → number/status/total/date)
+- [x] **PII boundary**: `order_status` never touches the (lazy) customer
+      association — an assistant physically cannot pull customer data through
+      the tools
+- [x] Real Postgres integration tests (`McpControllerIntegrationTest`):
+      handshake, tool discovery/calls, PII guarantee, JSON-RPC `-32601`/
+      `-32602` errors, unknown-order tool errors, notifications + batches
+- [x] Business guide: `docs/business/11-mcp-ai-integration.md`
+
+### Design decision
+The repo is pinned to Spring Boot 3.2 (Spring 6.1); official MCP Spring
+starters require Spring 6.2+. Rather than upgrade the stack or vendor an
+incompatible SDK, this PR implements the JSON-RPC wire subset directly and
+documents the upgrade path (official `mcp-spring-*` SDK on a supported Boot
+line, same tool contracts). Hand-rolled = fully owned + fully tested.
+
+### Key questions answered
+1. **Why MCP instead of more REST endpoints?** Assistants are best served by a
+   *discoverable* surface: they read `tools/list` and adapt. The API keeps one
+   auth story (Bearer/API key) and one concept of "who may do what".
+2. **Why read-only?** An assistant can be a great observer and a dangerous
+   writer. Read-only tools give value now; write tools need confirmation +
+   side-effect discipline (idempotency, outbox, audit) later.
+3. **Is it production-grade MCP?** The subset is spec-conformant and tested,
+   with honest limits (no resources/prompts/SSE) documented rather than hidden.
+
+---
+
 ## Learning Roadmap
 
 | # | Aspect | # | Aspect |
@@ -1337,7 +1378,7 @@ every step. Final suite: **120 tests, 0 failures.**
 | 15 | SQL Logging & Debugging | 33 | Docker & Kubernetes |
 | 16 | Second Level Cache | 34 | CI/CD & GitOps |
 | 17 | DTO Projections | 35 | Enterprise Features (Optional) |
-| 18 | JPA Events & Listeners | | |
+| 18 | JPA Events & Listeners | 36 (bonus) | MCP Server (AI Integration) |
 
 ---
 
