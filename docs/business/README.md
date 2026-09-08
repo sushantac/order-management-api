@@ -60,6 +60,7 @@ caching and Kafka publishing against the compose services.
 | [08-observability-health-monitoring.md](08-observability-health-monitoring.md) | Health/probes, metrics, logs, traces |
 | [09-integration-events-kafka.md](09-integration-events-kafka.md) | Outbox/event guarantees, Kafka topics, consumer guidance |
 | [10-enterprise-and-utility-features.md](10-enterprise-and-utility-features.md) | Feature flags, i18n messages, API docs (Swagger/OpenAPI), misc utilities |
+| [11-mcp-ai-integration.md](11-mcp-ai-integration.md) | AI assistant integration: MCP JSON-RPC endpoint, read-only tools, PII boundary |
 
 ## API surface at a glance
 
@@ -71,5 +72,6 @@ caching and Kafka publishing against the compose services.
 | `/api/v1/customers` | GET (paged), GET `/{id}`, GET `/{id}/view`, GET `/legacy`, POST, PUT `/{id}`, DELETE `/{id}`, DELETE `/{id}/data` (GDPR), GET `/{id}/portability` |
 | `/api/v1/features` | GET (feature flags) |
 | `/api/v1/messages/{key}` | GET (localized messages) |
+| `/mcp` | POST (MCP JSON-RPC: `initialize`, `tools/list`, `tools/call` — read-only tools) |
 | `/actuator/*` | health (incl. liveness/readiness), metrics, prometheus, info |
 | `/v3/api-docs`, `/swagger-ui.html` | OpenAPI spec + interactive UI |
