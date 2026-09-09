@@ -9,6 +9,13 @@
 # ============================================================================
 spring:
   ai:
+    # PR #44 - EXPLICIT model selection. DeepSeek answers, Ollama embeds.
+    # Without this, DeepSeekChatAutoConfiguration and OllamaChatAutoConfiguration
+    # both register a ChatModel and the app fails at startup with "required a
+    # single bean, but 2 were found".
+    model:
+      chat: deepseek
+      embedding: ollama
     deepseek:
       api-key: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY env var}
     ollama:
@@ -28,19 +35,24 @@ app:
     vector-table: vector_store
     # PR #43 - retrieval strategy: DENSE (embeddings only) or HYBRID (dense +
     # Postgres full-text fused via Reciprocal Rank Fusion, then MMR re-rank).
-    # RETRIEVAL-MODE IS A WIRING DECISION: the code base treats dense as the
-    # baseline and hybrid as the default.
+    # RETRIEVAL-MODE IS A WIRING DECISION: dense is the measured baseline,
+    # hybrid the default.
     retrieval-mode: hybrid
-    # Hybrid tuning. rrf-k=60 is the canonical RRF constant. mmr-lambda=1 keeps
-    # pure relevance order; lower trades relevance for topical diversity (0.5 is
-    # the typical starting point for multi-part questions).
+    # Hybrid tuning. PR #44 flipped mmr-enabled to OFF: on this corpus MMR at
+    # 0.5 dropped hit-rate@5 from 75% to 50% (single-topic goldens) while RRF
+    # alone held 75% and raised top-1 accuracy to 50%. Optional tuning block
+    # (all values are the shipped defaults - only override what you measured):
     # retrieval:
-    #   mmr-enabled: true
+    #   mmr-enabled: false
     #   mmr-lambda: 0.5
     #   rrf-k: 60
-    # Retrieval-eval harness (PR #42): report-only by default. Set min-hit-rate
-    # (e.g. 0.7) to gate startup on measured retrieval quality.
-    # eval:
-    #   enabled: true
-    #   goldens-location: classpath:rag/eval/golden-questions.json
-    #   min-hit-rate: 0.7
+    # Retrieval-eval harness (PR #42, made real in PR #44): gate is EARNED from
+    # measured numbers (see docs/additions/07-hybrid-retrieval.md#measured).
+    # min-hit-rate=0.7 sits just under the measured hit-rate@5 of 75% so a real
+    # retrieval regression fails startup loudly. Every run writes an audit
+    # snapshot to report-location (build artifact, git-ignored).
+    eval:
+      enabled: true
+      goldens-location: classpath:rag/eval/golden-questions.json
+      min-hit-rate: 0.7
+      report-location: target/rag-eval-report.json

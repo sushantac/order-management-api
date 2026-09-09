@@ -9,7 +9,11 @@
 # ============================================================================
 services:
   postgres:
-    image: postgres:16
+    # PR #44 - pgvector image (postgres 16 + the 'vector' extension) so RAG's
+    # pgvector store and its full-text lexical path run in the SAME local DB
+    # instead of a dev-only special case. Same major version as before, so
+    # existing named-volume data is untouched.
+    image: pgvector/pgvector:pg16
     container_name: order-api-postgres
     environment:
       POSTGRES_DB: orderdb
