@@ -236,6 +236,18 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-vector-store</artifactId>
         </dependency>
+        <!--
+          PR #42 - RAG productionization: persistent vector storage backed by
+          the pgvector extension on PostgreSQL. Deliberately the plain library
+          (NOT spring-ai-starter-vector-store-pgvector) so Spring AI's auto-config
+          never activates an eager PgVectorStore bean in the default / RAG-off /
+          test contexts; our own RagConfig builds it only when app.rag.enabled.
+          Provides PgVectorStore + the com.pgvector JDBC type + JdbcTemplate.
+        -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-pgvector-store</artifactId>
+        </dependency>
 
         <!--
           PR #25 - OpenAPI / Swagger UI. Generates the machine-readable spec at

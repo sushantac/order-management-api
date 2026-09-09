@@ -332,12 +332,15 @@ Full suite: **135 tests, all green** (127 pre-existing + 8 new).
 
 ## 7. Decisions and honest limits
 
-- **In-memory vector store.** 66 files / ≈118 chunks is tiny; `SimpleVectorStore`
-  is right-sized. Scale path: PGVector or Redis with the identical
-  `VectorStore` interface + a re-index job.
-- **Docs indexed once at startup.** No watcher yet. After editing `docs/`,
-  re-run (or call `ingestionService.reindex()`). A `FileSystemWatcher` or a
-  tiny admin trigger is the obvious next increment.
+- **In-memory vector store.** Initially, 66 files / ≈118 chunks is tiny and
+  `SimpleVectorStore` was right-sized. **Shipped since (#42):** vectors live in
+  pgvector on the app's own Postgres (`PgVectorStore`, identical `VectorStore`
+  interface, schema+extension created idempotently on first use) — see
+  `05-rag-productionization.md`.
+- **Docs indexed once at startup.** Now **content-addressed and incremental
+  (#42)**: re-indexing skips unchanged files, re-embeds only edits, drops
+  removed files, and is triggerable via the guarded `reindex_docs` MCP write
+  tool — no watcher needed when re-indexing is a first-class, auditable action.
 - **Embeddings are local, chat is hosted.** Best balance of free/fast/quality
   today; DeepSeek has no embeddings API, Ollama has a perfectly good chat model
   if you want 100% local.
