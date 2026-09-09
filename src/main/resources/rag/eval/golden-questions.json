@@ -1,0 +1,50 @@
+[
+  {
+    "question": "How does optimistic locking prevent two users silently overwriting each other's changes?",
+    "expected-source": "interview-cheat-sheets/10-system-design-and-behavioral.md"
+  },
+  {
+    "question": "What is a virtual thread and how does Spring Boot use it?",
+    "expected-source": "interview-cheat-sheets/01-core-java21-spring-boot.md"
+  },
+  {
+    "question": "How does the outbox pattern make order event publishing reliable and safe?",
+    "expected-source": "interview-cheat-sheets/06-event-driven-and-kafka.md"
+  },
+  {
+    "question": "What does the error envelope look like when an API call fails validation?",
+    "expected-source": "interview-cheat-sheets/07-errors-idempotency-correlation-versioning.md"
+  },
+  {
+    "question": "How are personal data records anonymised under GDPR?",
+    "expected-source": "interview-cheat-sheets/04-security-oauth2-jwt-pii-gdpr.md"
+  },
+  {
+    "question": "What happens to the whole order when the payment gateway declines a charge?",
+    "expected-source": "business/04-payments.md"
+  },
+  {
+    "question": "Which MCP tool answers questions by retrieving documentation about this API?",
+    "expected-source": "additions/01-rag-and-docs-search.md"
+  },
+  {
+    "question": "How does the agent decide which of its tools to call for a question?",
+    "expected-source": "additions/02-agentic-tool-calling.md"
+  },
+  {
+    "question": "How does chat memory keep a multi-turn conversation in scope?",
+    "expected-source": "additions/03-chat-memory.md"
+  },
+  {
+    "question": "Why must cancel_order be called with confirmed exactly equal to true?",
+    "expected-source": "additions/04-guarded-write-tool.md"
+  },
+  {
+    "question": "On which HTTP endpoint does the MCP server expose its AI tools?",
+    "expected-source": "interview-cheat-sheets/11-mcp-ai-integration.md"
+  },
+  {
+    "question": "What is the role of the Redisson distributed lock in this API?",
+    "expected-source": "interview-cheat-sheets/03-transactions-concurrency-caching.md"
+  }
+]

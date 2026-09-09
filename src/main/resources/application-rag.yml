@@ -22,3 +22,13 @@ app:
     chunk-size: 800
     chunk-overlap: 200
     top-k: 5
+    # PR #42 - vectors live in PostgreSQL via the pgvector extension.
+    # embedding-dimensions must match the embedding model (nomic-embed-text = 768).
+    embedding-dimensions: 768
+    vector-table: vector_store
+    # Retrieval-eval harness (PR #42): report-only by default. Set min-hit-rate
+    # (e.g. 0.7) to gate startup on measured retrieval quality.
+    # eval:
+    #   enabled: true
+    #   goldens-location: classpath:rag/eval/golden-questions.json
+    #   min-hit-rate: 0.7

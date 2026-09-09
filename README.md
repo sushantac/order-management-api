@@ -1606,6 +1606,63 @@ unreachable by the model via a separate tool hierarchy.
 
 ---
 
+## PR #42 (bonus) — RAG productionization: persistent pgvector + re-index trigger + retrieval eval
+
+> Follow-up to PR #38: RAG's two honest open boxes were "in-memory vector store
+> … scale path: PGVector" and "docs indexed once at startup … a tiny admin
+> trigger is the obvious next increment." This PR closes both — vectors now live
+> in pgvector on the app's own Postgres, re-indexing is *content-addressed and
+> incremental* and triggerable via a guarded `reindex_docs` write tool — and then
+> adds the part almost nobody learns: **measuring retrieval quality** against a
+> golden question set, report-only by default and a deploy gate once earned.
+
+**Aspect learned:** that RAG's production concerns are three different problems —
+persistence (a `VectorStore` bean swap, no code change), freshness (deterministic
+ids + content hashes make re-indexing idempotent and cheap), and *measurement*
+(a hit-rate@k harness that makes retrieval quality a number before it's a gate).
+
+### What changed
+- [x] **`PgVectorStore` replaces `SimpleVectorStore`** — same `VectorStore`
+      interface, `initializeSchema(true)` creates the `vector` extension +
+      `vector_store` table + HNSW index idempotently on the app's own Postgres;
+      plain `spring-ai-pgvector-store` library (not the starter) so no eager
+      auto-config bean leaks into non-RAG contexts
+- [x] **Content-addressed incremental re-index** — deterministic chunk ids
+      (`UUID.nameUUIDFromBytes(source:index)`), sha-256 `content-hash` metadata,
+      unchanged files skipped, edited files deleted + re-added exactly once,
+      removed sources dropped; sources keyed by *relative path* (basenames are
+      not unique here — eleven `README.md`s) with idempotency locked in by tests
+- [x] **`reindex_docs` guarded write tool** — PR #41 rails: `app.mcp.write-tool.enabled`
+      + RAG-on conditionals, required `confirmed=true`, side effects only through
+      `DocumentIngestionService.reindex()`, count-only reply, `mcp.reindex-docs`
+      audit; the agent still can never call it
+- [x] **Retrieval-eval harness** — `rag/eval/golden-questions.json` (12 goldens),
+      `RagRetrievalEvaluator` (hit-rate@k, top-1 accuracy, precision@k),
+      `RagEvalRunner` logs the full HIT/MISS report at startup with RAG on;
+      `app.rag.eval.min-hit-rate` defaults to `0` (report-only) and gates deploys
+      once raised
+- [x] **19 new tests** — `DocumentIngestionServiceTest` (rewritten, in-memory
+      `VectorIndexStore` twin; idempotency/change/removal), 3 eval semantics,
+      4 runner-gate, 4 tool-guard, and `PgVectorRagIntegrationTest` (6) against
+      a real `pgvector/pgvector:pg16` container asserting rows, 768-dim vectors,
+      HNSW, idempotent row counts, stale-chunk replacement on edits, retrieval
+      from Postgres and a well-formed eval over the real goldens
+
+### Key questions answered
+1. **Why did re-indexing break the first time?** Basenames aren't unique (eleven
+   `README.md`) — deterministic ids derived from them collided, so "unchanged"
+   could never be proven. Relative-path source keys + a test that asserts a
+   second `reindex()` is a zero-chunk no-op fixed and locked it.
+2. **Why not Redis/a vector DB?** The `VectorStore` seam made the swap a bean.
+   postgres was already there, ops unchanged, and one database answers SQL and
+   similarity queries.
+3. **When is a hit-rate gate safe?** Only after real retrieval quality has been
+   measured once — which is exactly why `min-hit-rate=0` is the default and the
+   hash-embedded tests are plumbing-only (they can prove the harness, never
+   shoulder the threshold).
+
+---
+
 ## Learning Roadmap
 
 | # | Aspect | # | Aspect |
@@ -1630,7 +1687,7 @@ unreachable by the model via a separate tool hierarchy.
 | 18 | JPA Events & Listeners | 36 (bonus) | MCP Server (AI Integration) |
 | 37 (bonus) | Official MCP Spring SDK on Boot 3.4 (Spring 6.2) | 38 (bonus) | RAG — `docs_search` (DeepSeek + Ollama) |
 | 39 (bonus) | Agentic tool-calling — `agentic_ask` | 40 (bonus) | Chat memory — multi-turn `agentic_ask` |
-| 41 (bonus) | Guarded write — `cancel_order` | 42 (next, bonus) | Open — your choice |
+| 41 (bonus) | Guarded write — `cancel_order` | 42 (bonus) | RAG productionization — pgvector + re-index + retrieval eval |
 
 ---
 
