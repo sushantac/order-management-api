@@ -49,7 +49,9 @@ import static org.assertj.core.api.Assertions.assertThat;
         // fetching (PR #7) so the N+1 pattern stays visible in this class.
         "spring.jpa.properties.hibernate.default_batch_fetch_size=1",
         // L2 is disabled in tests except the dedicated cache test.
-        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false"
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
+        "spring.ai.model.chat=none",
+        "spring.ai.model.embedding=none"
 })
 @Transactional
 class FetchTypeIntegrationTest {

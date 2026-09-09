@@ -113,6 +113,22 @@ spring:
       # message (see OrderEventConsumer) - explicit offset control.
       ack-mode: manual
 
+  # --- RAG: Spring AI (DeepSeek chat + Ollama embeddings) --------------------
+  # DeepSeek handles answer generation; Ollama (local, free) handles embeddings.
+  # Activate with --spring.profiles.active=rag (see application-rag.yml).
+  ai:
+    deepseek:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      chat:
+        model: deepseek-v4-flash
+        temperature: 0.3
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      embedding:
+        model: nomic-embed-text
+        enabled: true
+
 server:
   # SERVER_PORT env var overridable - useful for tests / running multiple instances.
   port: ${SERVER_PORT:8080}

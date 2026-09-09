@@ -24,7 +24,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @Testcontainers
 @SpringBootTest
-@TestPropertySource(properties = "spring.jpa.properties.hibernate.cache.use_second_level_cache=false")
+@TestPropertySource(properties = {
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
+        "spring.ai.model.chat=none",
+        "spring.ai.model.embedding=none"
+})
 class OrderManagementApiApplicationTests {
 
     @Container
