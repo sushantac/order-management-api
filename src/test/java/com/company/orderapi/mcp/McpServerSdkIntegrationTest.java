@@ -91,6 +91,12 @@ class McpServerSdkIntegrationTest {
             assertThat(tools)
                     .extracting(McpSchema.Tool::name)
                     .containsExactlyInAnyOrder("api_health", "order_status", "product_search");
+            // PR #41: the guarded write tool must be ABSENT unless explicitly
+            // enabled (app.mcp.write-tool.enabled=true). tools/list is read-only
+            // by default - that is the guarantee, not a coincidence.
+            assertThat(tools)
+                    .extracting(McpSchema.Tool::name)
+                    .doesNotContain("cancel_order", "create_order", "delete_order");
 
             McpSchema.Tool orderStatus = tools.stream()
                     .filter(t -> t.name().equals("order_status"))

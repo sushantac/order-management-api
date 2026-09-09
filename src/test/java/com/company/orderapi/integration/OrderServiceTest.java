@@ -1,7 +1,9 @@
 package com.company.orderapi.integration;
 
+import com.company.orderapi.domain.Address;
 import com.company.orderapi.domain.Customer;
 import com.company.orderapi.domain.Order;
+import com.company.orderapi.domain.OrderStatus;
 import com.company.orderapi.domain.Product;
 import com.company.orderapi.domain.repository.CustomerRepository;
 import com.company.orderapi.domain.repository.OrderRepository;
@@ -43,7 +45,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "integration.database.tag=OrderServiceTest",
         "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
         "spring.ai.model.chat=none",
-        "spring.ai.model.embedding=none"
+        "spring.ai.model.embedding=none",
+        // PR #41: cancelOrder carries @PreAuthorize(order_write); disabled here
+        // because the (disable) flag short-circuits the SpEL and direct bean
+        // calls from tests don't have a SecurityContext. Scope enforcement is
+        // exercised in SecurityIntegrationTest.
+        "app.security.enabled=false"
 })
 class OrderServiceTest {
 
@@ -133,6 +140,69 @@ class OrderServiceTest {
         assertThat(orderRepository.count()).isEqualTo(ordersBefore);
         assertThat(productRepository.findById(product.getId()).orElseThrow().getStockQuantity())
                 .isEqualTo(1);
+    }
+
+    @Test
+    void cancelOrderMovesAplacedOrderToCancelledInTheDatabase() {
+        Customer customer = seedCustomer("svc4@example.com", "Service Four");
+        Product product = seedProduct("SV-Cancel", new BigDecimal("4.00"), 3);
+        Order order = orderService.placeOrder(customer.getId(),
+                List.of(new OrderService.OrderLine(product.getId(), 1)));
+
+        Order cancelled = orderService.cancelOrder(order.getId());
+
+        assertThat(cancelled.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(orderRepository.findById(order.getId()).orElseThrow().getStatus())
+                .as("the mutation must be committed, not transient")
+                .isEqualTo(OrderStatus.CANCELLED);
+    }
+
+    @Test
+    void cancelOrderForUnknownIdThrows() {
+        assertThatThrownBy(() -> orderService.cancelOrder(999999999L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unknown order id 999999999");
+    }
+
+    @Test
+    void shippedOrderCannotBeCancelledAndStaysShipped() {
+        Customer customer = seedCustomer("svc5@example.com", "Service Five");
+        Product product = seedProduct("SV-Ship", new BigDecimal("2.00"), 2);
+        Order order = orderService.placeOrder(customer.getId(),
+                List.of(new OrderService.OrderLine(product.getId(), 1)));
+
+        // The SHIPPED guard in OrderBusinessListener requires shippingAddress to
+        // be set; the address must be a persisted row (order.shipping_address_id
+        // is a plain FK with no cascade). Persist a fresh address OWNER in a
+        // single flush - the exact shape used by JpaCascadingIntegrationTest.
+        Customer owner = new Customer("svc-ship-addr@example.com", "Ship");
+        Address address = new Address(owner, "1 Ship St", "Shipville", "SH");
+        owner.addAddress(address);
+        customerRepository.saveAndFlush(owner);
+
+        order.setShippingAddress(address);
+        order.setStatus(OrderStatus.SHIPPED);
+        orderRepository.saveAndFlush(order);
+
+        assertThatThrownBy(() -> orderService.cancelOrder(order.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("cannot be cancelled once SHIPPED");
+        assertThat(orderRepository.findById(order.getId()).orElseThrow().getStatus())
+                .isEqualTo(OrderStatus.SHIPPED);
+    }
+
+    @Test
+    void cancellingTheSameOrderTwiceIsRejected() {
+        Customer customer = seedCustomer("svc6@example.com", "Service Six");
+        Product product = seedProduct("SV-Double", new BigDecimal("1.50"), 4);
+        Order order = orderService.placeOrder(customer.getId(),
+                List.of(new OrderService.OrderLine(product.getId(), 1)));
+
+        orderService.cancelOrder(order.getId());
+
+        assertThatThrownBy(() -> orderService.cancelOrder(order.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("already cancelled");
     }
 
     private Customer seedCustomer(String email, String name) {

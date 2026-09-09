@@ -71,6 +71,24 @@ class AgentToolSetTest {
     }
 
     @Test
+    void agentSurfaceStaysStrictlyReadOnlyNoWriteTools() {
+        // PR #41: the write tool (cancel_order) exists on the MCP server but is
+        // structurally NOT part of AgentToolSet, so the agent can never ask the
+        // model to call it. This test is the assertion of that boundary.
+        ToolCallbackProvider provider = MethodToolCallbackProvider.builder()
+                .toolObjects(toolSet)
+                .build();
+
+        Set<String> names = Arrays.stream(provider.getToolCallbacks())
+                .map(callback -> callback.getToolDefinition().name())
+                .collect(Collectors.toSet());
+
+        assertThat(names)
+                .noneMatch(n -> n.contains("cancel") || n.contains("create")
+                        || n.contains("delete") || n.contains("update"));
+    }
+
+    @Test
     void apiHealthReturnsOk() {
         assertThat(toolSet.apiHealth()).startsWith("OK | order-management-api-mcp");
     }

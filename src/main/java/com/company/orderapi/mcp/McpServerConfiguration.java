@@ -29,10 +29,16 @@ import java.util.List;
  *       Spring MVC (Boot discovers {@link RouterFunction} beans).</li>
  *   <li>{@link McpStatelessSyncServer} - the SDK-managed server. Built from
  *       the transport plus one {@link io.modelcontextprotocol.spec.McpSchema.Tool}
- *       per {@link AbstractMcpReadOnlyTool} bean. It owns JSON-RPC request
- *       handling, protocol negotiation and the {@code tools/list} + {@code tools/call}
- *       surface.</li>
+ *       per {@link AbstractMcpReadOnlyTool} and {@link AbstractMcpWriteTool} bean.
+ *       It owns JSON-RPC request handling, protocol negotiation and the
+ *       {@code tools/list} + {@code tools/call} surface.</li>
  * </ol>
+ *
+ * <p>Read-only and write tools are injected as SEPARATE lists (see
+ * {@link AbstractMcpWriteTool}): write tools are off by default, so in the
+ * default configuration this list is empty and {@code tools/list} stays purely
+ * read-only. Enabling {@code app.mcp.write-tool.enabled=true} is an explicit,
+ * reviewable operational decision.
  *
  * <p>Authentication is NOT handled here: {@code /mcp} sits behind the same
  * Spring Security chain as every other endpoint, so MCP callers need a valid
@@ -59,18 +65,23 @@ public class McpServerConfiguration {
     @Bean(destroyMethod = "close")
     public McpStatelessSyncServer mcpServer(
             WebMvcStatelessServerTransport transport,
-            List<AbstractMcpReadOnlyTool> tools) {
+            List<AbstractMcpReadOnlyTool> readTools,
+            List<AbstractMcpWriteTool> writeTools) {
 
-        McpStatelessServerFeatures.SyncToolSpecification[] specifications =
-                tools.stream()
-                        .sorted(Comparator.comparing(AbstractMcpReadOnlyTool::name))
-                        .map(AbstractMcpReadOnlyTool::specification)
-                        .toArray(McpStatelessServerFeatures.SyncToolSpecification[]::new);
+        List<McpStatelessServerFeatures.SyncToolSpecification> specifications = new java.util.ArrayList<>();
+        readTools.stream()
+                .sorted(Comparator.comparing(AbstractMcpReadOnlyTool::name))
+                .map(AbstractMcpReadOnlyTool::specification)
+                .forEach(specifications::add);
+        writeTools.stream()
+                .sorted(Comparator.comparing(AbstractMcpWriteTool::name))
+                .map(AbstractMcpWriteTool::specification)
+                .forEach(specifications::add);
 
         return McpServer.sync(transport)
                 .serverInfo("order-management-api-mcp", "1.0.0")
                 .capabilities(McpSchema.ServerCapabilities.builder().tools(true).build())
-                .tools(specifications)
+                .tools(specifications.toArray(McpStatelessServerFeatures.SyncToolSpecification[]::new))
                 .build();
     }
 }
