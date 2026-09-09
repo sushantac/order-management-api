@@ -5,8 +5,8 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: 🎉 All 35 learning PRs + bonus PRs #36 (MCP server), #37 (official MCP Spring SDK, Boot 3.4), #38 (RAG — `docs_search`), #39 (agentic tool-calling — `agentic_ask`) and #40 (chat memory — multi-turn `agentic_ask`) merged to `develop` — journey complete (final suite: 147 tests, 0 failures).**
-> See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence (plus the #36–#40 AI bonuses).
+> **Status: 🎉 All 35 learning PRs + bonus PRs #36 (MCP server), #37 (official MCP Spring SDK, Boot 3.4), #38 (RAG — `docs_search`), #39 (agentic tool-calling — `agentic_ask`), #40 (chat memory — multi-turn `agentic_ask`) and #41 (guarded write — `cancel_order`) merged to `develop` — journey complete (final suite: 164 tests, 0 failures).**
+> See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence (plus the #36–#41 AI bonuses).
 >
 > 📚 **Study guides:** [Learning document](docs/learnings/README.md) (concepts → real code)
 > · [Interview cheat sheets](docs/interview-cheat-sheets/README.md) (rapid revision pack)
@@ -1630,7 +1630,7 @@ unreachable by the model via a separate tool hierarchy.
 | 18 | JPA Events & Listeners | 36 (bonus) | MCP Server (AI Integration) |
 | 37 (bonus) | Official MCP Spring SDK on Boot 3.4 (Spring 6.2) | 38 (bonus) | RAG — `docs_search` (DeepSeek + Ollama) |
 | 39 (bonus) | Agentic tool-calling — `agentic_ask` | 40 (bonus) | Chat memory — multi-turn `agentic_ask` |
-| 41 (bonus) | Guarded write — `cancel_order` | 42 (next) | Open for you to choose |
+| 41 (bonus) | Guarded write — `cancel_order` | 42 (next, bonus) | Open — your choice |
 
 ---
 
