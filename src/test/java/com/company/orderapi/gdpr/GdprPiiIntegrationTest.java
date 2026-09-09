@@ -51,7 +51,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
         "integration.database.tag=GdprPiiIntegrationTest",
-        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false"
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
+        "spring.ai.model.chat=none",
+        "spring.ai.model.embedding=none"
 })
 class GdprPiiIntegrationTest {
 

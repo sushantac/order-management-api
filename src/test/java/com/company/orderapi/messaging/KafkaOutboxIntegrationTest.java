@@ -39,6 +39,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestPropertySource(properties = {
         "integration.database.tag=KafkaOutboxIntegrationTest",
         "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
+        "spring.ai.model.chat=none",
+        "spring.ai.model.embedding=none",
         "app.kafka.enabled=true",
         "app.outbox.scheduler-enabled=false"
 })

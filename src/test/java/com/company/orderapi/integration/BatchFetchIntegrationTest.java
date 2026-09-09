@@ -50,7 +50,9 @@ import static org.assertj.core.api.Assertions.assertThat;
         // class exercises the PR #7 global value (20) from application.yml.
         // Tests disable the second-level cache (shared JVM Ehcache) unless the
         // test under focus is SecondLevelCacheIntegrationTest itself.
-        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false"
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
+        "spring.ai.model.chat=none",
+        "spring.ai.model.embedding=none"
 })
 @Transactional
 class BatchFetchIntegrationTest {

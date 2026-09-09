@@ -34,7 +34,9 @@ import static org.assertj.core.api.Assertions.assertThat;
         // Re-enable the second-level cache ONLY here (disabled in test profile
         // to stop Ehcache's JVM-wide default cache manager leaking between
         // contexts).
-        "spring.jpa.properties.hibernate.cache.use_second_level_cache=true"
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=true",
+        "spring.ai.model.chat=none",
+        "spring.ai.model.embedding=none"
 })
 class SecondLevelCacheIntegrationTest {
 

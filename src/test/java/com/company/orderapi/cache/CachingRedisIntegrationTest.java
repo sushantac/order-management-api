@@ -45,6 +45,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestPropertySource(properties = {
         "integration.database.tag=CachingRedisIntegrationTest",
         "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
+        "spring.ai.model.chat=none",
+        "spring.ai.model.embedding=none",
         "app.security.enabled=false"
 })
 class CachingRedisIntegrationTest {

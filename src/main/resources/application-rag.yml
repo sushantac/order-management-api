@@ -1,0 +1,24 @@
+# ============================================================================
+# RAG profile: enables document ingestion + DeepSeek answer generation.
+# Prerequisites:
+#   1. Ollama running locally (brew install ollama && ollama serve)
+#   2. Ollama embedding model pulled (ollama pull nomic-embed-text)
+#   3. DEEPSEEK_API_KEY environment variable set
+# Usage:
+#   ./mvnw spring-boot:run -Dspring-boot.run.arguments=--spring.profiles.active=rag
+# ============================================================================
+spring:
+  ai:
+    deepseek:
+      api-key: ${DEEPSEEK_API_KEY:?Set DEEPSEEK_API_KEY env var}
+    ollama:
+      embedding:
+        model: nomic-embed-text
+
+app:
+  rag:
+    enabled: true
+    docs-location: classpath:docs/**/*.md
+    chunk-size: 800
+    chunk-overlap: 200
+    top-k: 5

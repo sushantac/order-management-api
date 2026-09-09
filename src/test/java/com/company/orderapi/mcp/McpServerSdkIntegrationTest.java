@@ -46,6 +46,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestPropertySource(properties = {
         "integration.database.tag=McpServerSdkIntegrationTest",
         "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
+        "spring.ai.model.chat=none",
+        "spring.ai.model.embedding=none",
         "app.security.enabled=false"
 })
 class McpServerSdkIntegrationTest {

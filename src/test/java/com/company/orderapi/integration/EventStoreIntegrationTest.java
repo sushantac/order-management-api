@@ -32,7 +32,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest
 @TestPropertySource(properties = {
         "integration.database.tag=EventStoreIntegrationTest",
-        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false"
+        "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
+        "spring.ai.model.chat=none",
+        "spring.ai.model.embedding=none"
 })
 class EventStoreIntegrationTest {
 

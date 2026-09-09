@@ -1398,6 +1398,65 @@ you do (protocol negotiation, JSON-RPC, notifications, error contracts).
 
 ---
 
+## PR #38 (bonus) — RAG: the API answers questions about itself (`docs_search`)
+
+> Follow-up to PR #37: MCP let an assistant *call into* the API; RAG turns the
+> direction around — the API now *answers questions* about its own
+> documentation. Retrieval-Augmented Generation over the 66-file `docs/` corpus.
+
+**Aspect learned:** the full RAG pipeline (ingest → chunk → embed → vector
+store → similarity search → grounded generation), the opt-in pattern for AI
+features, and why Spring AI auto-configuration breaks tests unless explicitly
+disabled.
+
+### What changed
+- [x] **RAG pipeline** (`com.company.orderapi.rag`): `DocumentIngestionService`
+      loads `classpath:docs/**/*.md` on startup, chunks with
+      `TokenTextSplitter(800, 200)`, embeds via **Ollama `nomic-embed-text`**
+      into an in-memory `SimpleVectorStore`
+- [x] **Generation**: `RagService` does top-k similarity search
+      (`app.rag.top-k`, default 5) and asks **DeepSeek** (`deepseek-v4-flash`)
+      to answer using only the retrieved chunks — each chunk attributed with
+      `[Source: <file>]`. No chunks matched → helpful "not found" message and
+      **no LLM call at all** (never invents answers)
+- [x] **MCP integration**: auto-discovered read-only tool `docs_search(question)`
+      on the existing `/mcp` server (`AbstractMcpReadOnlyTool` like
+      `product_search`/`order_status`) — no new endpoint, no write surface
+- [x] **Fully opt-in**: all RAG beans gated on `app.rag.enabled=true` (the `rag`
+      Spring profile); the default app needs no Ollama, no API key, no vector
+      store. `application-rag.yml` hard-requires `DEEPSEEK_API_KEY`
+- [x] **Spring AI 1.0.0** via BOM: `spring-ai-starter-model-deepseek`,
+      `spring-ai-starter-model-ollama`, `spring-ai-vector-store`; `docs/` added
+      as a classpath resource
+- [x] **Test collateral (kept)**: DeepSeek's eager auto-config throws without an
+      API key, so every `@SpringBootTest` now disables AI autoconfig
+      (`spring.ai.model.chat=none` + `spring.ai.model.embedding=none`); Mockito
+      needs `-Dnet.bytebuddy.experimental=true` on the test JVM (local Java 25)
+- [x] **8 new pure unit tests** (mocked vector store/model, real corpus):
+      grounding (prompt cites `Source:`), idempotent ingest, no-chunks honesty
+
+### Design decision
+Two models, two jobs: **Ollama** (local, free) does *embeddings* while
+**DeepSeek** (hosted) does *chat generation* — DeepSeek has no first-class
+embeddings API and the split is cheap/fast/quality-balanced. The vector store is
+**in-memory** (`SimpleVectorStore`) because 66 files / ≈118 chunks is tiny; the
+`VectorStore` interface is where you'd plug PGVector/Redis for a huge corpus.
+Teach guide: `docs/additions/01-rag-and-docs-search.md`.
+
+### Key questions answered
+1. **Why RAG instead of one big `grep`?** Lexical search misses meaning
+   ("concurrency guard" vs "locking"); embeddings retrieve by *meaning*, and the
+   LLM writes a grounded, source-attributed answer only from the retrieved chunks.
+2. **Why fully gated behind a profile?** The default context must stay
+   unchanged: no Ollama, no API key, no eager model beans. But the
+   *auto-configuration* still boots them eagerly — that is why tests must opt
+   out with `spring.ai.model.*=none`.
+3. **How is hallucination controlled?** The system prompt forbids knowledge
+   outside the cited chunks, every answer carries `[Source: ...]` attribution,
+   and with zero relevant chunks the LLM is never called at all.
+
+---
+
 ## Learning Roadmap
 
 | # | Aspect | # | Aspect |
@@ -1420,7 +1479,7 @@ you do (protocol negotiation, JSON-RPC, notifications, error contracts).
 | 16 | Second Level Cache | 34 | CI/CD & GitOps |
 | 17 | DTO Projections | 35 | Enterprise Features (Optional) |
 | 18 | JPA Events & Listeners | 36 (bonus) | MCP Server (AI Integration) |
-| 37 (bonus) | Official MCP Spring SDK on Boot 3.4 (Spring 6.2) | | |
+| 37 (bonus) | Official MCP Spring SDK on Boot 3.4 (Spring 6.2) | 38 (bonus) | RAG — `docs_search` (DeepSeek + Ollama) |
 
 ---
 

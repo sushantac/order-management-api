@@ -39,6 +39,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @TestPropertySource(properties = {
         "integration.database.tag=ResilienceChaosIntegrationTest",
         "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
+        "spring.ai.model.chat=none",
+        "spring.ai.model.embedding=none",
         "app.security.enabled=false",
         // Small, fast knobs so the breaker opens deterministically during the test.
         "resilience4j.circuitbreaker.instances.paymentGateway.minimum-number-of-calls=5",
