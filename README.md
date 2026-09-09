@@ -1506,6 +1506,50 @@ picks and chains real methods, how to expose it safely, and how Spring AI's
 
 ---
 
+## PR #40 (bonus) — Chat memory: the agent remembers (`agentic_ask` + `conversationId`)
+
+> Follow-up to PR #39: the agent worked, but every call was stateless — turn 2
+> forgot turn 1. This PR gives it **scoped multi-turn memory**: pass the same
+> `conversationId` across calls and previous questions *and the agent's answers*
+> are fed back into the model's context via a message-window memory advisor.
+
+**Aspect learned:** LLM chat memory — Spring AI's `ChatMemory` +
+`MessageChatMemoryAdvisor` (before/after hooks that prepend history and store
+the reply), a bounded per-conversation message window, and — the real gotcha —
+how a conversation id actually reaches the advisor in Spring AI 1.0.0: there is
+**no `.context()`** on the request spec; values flow via
+`AdvisorSpec.param(...)` → `advisorParams` → request context
+(`ChatMemory.CONVERSATION_ID` key). Older docs examples don't compile against it.
+
+### What changed
+- [x] **`app.agent.memory.max-messages` `ChatMemory` bean**: a 20-message
+      sliding window (`MessageWindowChatMemory`, in-memory, `SystemMessage`-aware
+      eviction) — swap the repository for Redis/DB persistence later
+- [x] **`MessageChatMemoryAdvisor`** wired on the agent's `ChatClient`
+      (prepends prior turns, stores the assistant reply)
+- [x] **`ask(task, conversationId)`** — same id = multi-turn conversation;
+      blank/missing id = fresh random per-call id, **stateless by default**
+      (the PR #39 guarantee is preserved); system prompt grown to tell the model
+      it may use remembered context
+- [x] **`agentic_ask` gains optional `conversationId`** in its MCP schema and
+      passes it straight through
+- [x] **3 new pure unit tests with real memory plumbing**: context carried
+      across turns in one conversation (turn 2's prompt contains turn 1's
+      Q *and* A), conversations isolated, blank ids stay stateless
+
+### Key questions answered
+1. **How does an LLM "remember"?** The stored history is prepended to the prompt,
+   not persisted in the model — an advisor does it for you (prompt-frame memory).
+2. **How do conversations stay isolated?** Every conversation is keyed by the
+   caller's `conversationId`; absent ids get a random per-call id, so memory is
+   strictly opt-in and never leaks between calls.
+3. **What was the version-specific trap?** `.context()` doesn't exist on the
+   1.0.0 request spec — you set advisor params per request. Doc'd in
+   `docs/additions/03-chat-memory.md` with the test that captures the real
+   second-turn prompt.
+
+---
+
 ## Learning Roadmap
 
 | # | Aspect | # | Aspect |
@@ -1529,7 +1573,7 @@ picks and chains real methods, how to expose it safely, and how Spring AI's
 | 17 | DTO Projections | 35 | Enterprise Features (Optional) |
 | 18 | JPA Events & Listeners | 36 (bonus) | MCP Server (AI Integration) |
 | 37 (bonus) | Official MCP Spring SDK on Boot 3.4 (Spring 6.2) | 38 (bonus) | RAG — `docs_search` (DeepSeek + Ollama) |
-| 39 (bonus) | Agentic tool-calling — `agentic_ask` | | |
+| 39 (bonus) | Agentic tool-calling — `agentic_ask` | 40 (bonus) | Chat memory — multi-turn `agentic_ask` |
 
 ---
 

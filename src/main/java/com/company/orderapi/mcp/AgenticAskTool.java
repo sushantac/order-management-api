@@ -19,6 +19,10 @@ import java.util.Map;
  *
  * <p>Only available when the RAG feature is enabled (the agent needs the DeepSeek
  * chat model and the {@link com.company.orderapi.rag.RagService}-backed docs tool).
+ *
+ * <p>PR #40: an optional {@code conversationId} turns the call into a multi-turn
+ * conversation - pass the same id across calls and the agent remembers the
+ * previous turns. Omit it for a fresh, stateless question.
  */
 @Component
 @ConditionalOnBean(AgentService.class)
@@ -39,8 +43,9 @@ public class AgenticAskTool extends AbstractMcpReadOnlyTool {
     public String description() {
         return "Delegate a task to the server-side agent. The agent decides which "
                 + "read-only tools to call (product_search, order_status, docs_search, "
-                + "api_health) and may chain several calls to answer. Read-only; no "
-                + "customer personal data.";
+                + "api_health) and may chain several calls to answer. Pass the same "
+                + "conversationId across calls to keep multi-turn memory. Read-only; "
+                + "no customer personal data.";
     }
 
     @Override
@@ -48,7 +53,11 @@ public class AgenticAskTool extends AbstractMcpReadOnlyTool {
         return objectSchema(Map.of(
                 "task", Map.of(
                         "type", "string",
-                        "description", "A natural-language task or question for the agent.")),
+                        "description", "A natural-language task or question for the agent."),
+                "conversationId", Map.of(
+                        "type", "string",
+                        "description", "Optional stable id grouping turns into one conversation "
+                                + "with memory. Omit for a stateless question.")),
                 List.of("task"));
     }
 
@@ -58,6 +67,7 @@ public class AgenticAskTool extends AbstractMcpReadOnlyTool {
         if (task == null || task.isBlank()) {
             throw new IllegalArgumentException("task must not be blank");
         }
-        return agentService.ask(task);
+        String conversationId = optionalText(arguments, "conversationId");
+        return agentService.ask(task, conversationId);
     }
 }
