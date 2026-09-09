@@ -3,6 +3,8 @@ package com.company.orderapi.agent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.model.tool.DefaultToolCallingChatOptions;
 import org.springframework.ai.tool.ToolCallbackProvider;
@@ -11,6 +13,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * PR #39 - server-side agent (agentic tool calling).
@@ -27,6 +30,12 @@ import java.util.List;
  *
  * <p>The agent is read-only by construction: every tool it can call comes from
  * {@link AgentToolSet}, which delegates to the same PII-free MCP tools.
+ *
+ * <p>PR #40 adds multi-turn chat memory: a {@link MessageChatMemoryAdvisor}
+ * keeps a sliding message window per {@code conversationId}. Callers pass a
+ * stable id to carry context across turns; omitting it makes each ask a fresh,
+ * stateless question (a random per-call id is used so no context leaks between
+ * unrelated asks).
  */
 @Service
 @ConditionalOnProperty(prefix = "app.rag", name = "enabled", havingValue = "true")
@@ -45,33 +54,46 @@ public class AgentService {
             - Call a tool instead of guessing or inventing data. The tool result is
               added to your context automatically.
             - You may call several tools in sequence to complete a task.
+            - You remember previous questions and answers from the same conversation;
+              refer to them when they help.
             - You have NO access to customer personal data and never claim to have it.
             - If the tools cannot answer, say so clearly.
             """;
 
     private final ChatClient chatClient;
 
-    public AgentService(ChatModel chatModel, ToolCallbackProvider toolCallbacks) {
+    public AgentService(ChatModel chatModel, ToolCallbackProvider toolCallbacks, ChatMemory chatMemory) {
         this.chatClient = ChatClient.builder(chatModel)
                 .defaultSystem(SYSTEM_PROMPT)
                 .defaultOptions(DefaultToolCallingChatOptions.builder()
                         .toolCallbacks(List.of(toolCallbacks.getToolCallbacks()))
                         .build())
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .build();
     }
 
     /**
      * Asks the agent to perform a task, letting it decide which tools to call.
      *
-     * @param task a natural-language task or question
+     * @param task           a natural-language task or question
+     * @param conversationId a stable id that groups turns into one conversation, or
+     *                       {@code null}/{@code ""} for a stateless question
      * @return the agent's final answer
      */
-    public String ask(String task) {
+    public String ask(String task, String conversationId) {
         if (task == null || task.isBlank()) {
             throw new IllegalArgumentException("task must not be blank");
         }
-        String answer = chatClient.prompt().user(task).call().content();
-        log.debug("agent: task='{}', answer length={}", task, answer == null ? 0 : answer.length());
+        String effectiveConversationId = (conversationId == null || conversationId.isBlank())
+                ? UUID.randomUUID().toString()
+                : conversationId.trim();
+        String answer = chatClient.prompt()
+                .advisors(spec -> spec.param(ChatMemory.CONVERSATION_ID, effectiveConversationId))
+                .user(task)
+                .call()
+                .content();
+        log.debug("agent: conversation={}, task='{}', answer length={}",
+                effectiveConversationId, task, answer == null ? 0 : answer.length());
         return answer;
     }
 }

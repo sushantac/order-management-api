@@ -235,8 +235,11 @@ Full suite: **144 tests, 0 failures** (127 pre-existing + 8 RAG + 9 agent).
 - **Single agent in a loop, not a multi-agent system.** The model manages its
   own tool sequence. True sub-agents / planning with a second model are a
   different, heavier architecture — deliberately out of scope.
-- **No memory.** Each `ask` starts fresh; conversation history between tasks is
-  not retained. Adding a `ChatMemory` advisor is the obvious next increment.
+- **No memory.** Originally each `ask` started fresh; conversation history
+  between tasks was not retained. **Addressed in PR #40** — see
+  [`03-chat-memory.md`](03-chat-memory.md): optional `conversationId` gives
+  scoped, opt-in multi-turn memory while keeping the stateless-by-default
+  behaviour.
 - **Gated with RAG.** `agentic_ask` needs the DeepSeek model and the docs tool,
   so it inherits the `app.rag.enabled` gate — the default app still needs
   nothing but the DB.
