@@ -53,13 +53,25 @@ public abstract class AbstractMcpReadOnlyTool {
                 .tool(tool)
                 .callHandler((transportContext, request) -> {
                     try {
-                        return new CallToolResult(run(request.arguments()), false);
+                        return new CallToolResult(execute(request.arguments()), false);
                     } catch (IllegalArgumentException e) {
                         String message = e.getMessage() == null ? "Tool failed." : e.getMessage();
                         return new CallToolResult(message, true);
                     }
                 })
                 .build();
+    }
+
+    /**
+     * Programmatic invocation of the tool, shared by the MCP call handler (above)
+     * and the server-side agent's function-calling surface (PR #39). Keeps ONE
+     * implementation of the read-only surface behind two protocols.
+     *
+     * @throws IllegalArgumentException with a safe, human message when the
+     *                                  request cannot be fulfilled.
+     */
+    public final String execute(Map<String, Object> arguments) {
+        return run(arguments);
     }
 
     protected static JsonSchema objectSchema(Map<String, Object> properties, List<String> required) {
