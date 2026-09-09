@@ -243,9 +243,11 @@ Full suite: **144 tests, 0 failures** (127 pre-existing + 8 RAG + 9 agent).
 - **Gated with RAG.** `agentic_ask` needs the DeepSeek model and the docs tool,
   so it inherits the `app.rag.enabled` gate — the default app still needs
   nothing but the DB.
-- **Tools are the same 4, forever (for now).** The moment a write tool exists,
-  this design will happily let the agent call it — that must be a *guarded*,
-  confirmation-wrapped, side-effect-disciplined decision in its own PR.
+- **Agent surface stays read-only.** PR #41 adds a *write* tool (`cancel_order`)
+  on the MCP server, but it is structurally **not** in `AgentToolSet`, so the
+  agent can never call it — see [`04-guarded-write-tool.md`](04-guarded-write-tool.md)
+  for the full guard-rail design (opt-in config, confirmation-required,
+  service-level authz, audit).
 - **Retrieval quality gates answer quality** (from PR #38) still applies inside
   `docs_search`; the agent adds no new hallucination surface beyond what those
   tools already control.

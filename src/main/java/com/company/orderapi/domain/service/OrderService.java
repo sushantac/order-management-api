@@ -17,6 +17,7 @@ import com.company.orderapi.messaging.OrderPlacedMessage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.annotation.Timed;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -129,5 +130,33 @@ public class OrderService {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Could not serialise outbox event", e);
         }
+    }
+
+    /**
+     * PR #41 - the guarded write: {@link Order#cancel() cancel} an order.
+     *
+     * <p>Security is layered, not a single token:
+     * <ol>
+     *   <li><b>AuthN</b> at the HTTP layer (the MCP endpoint is authenticated).</li>
+     *   <li><b>AuthZ</b> here: a caller needs the {@code order_write} scope (or an
+     *       API key) to run ANY code path that reaches this method.</li>
+     *   <li><b>Domain rule</b>: {@code cancel()} itself rejects shipped/delivered
+     *       or already-cancelled orders.</li>
+     *   <li><b>Idempotency</b>: the second cancel is an error, never a silent lie.</li>
+     * </ol>
+     * The confirmation token enforced at the protocol layer (the MCP tool) is an
+     * ergonomic guard rail that stops accidental calls; it protects against a
+     * model misfiring, NOT against a determined attacker - which is why it is
+     * NOT the only control.
+     */
+    @Transactional
+    @PreAuthorize("@securityProperties.enabled == false or hasAnyAuthority('SCOPE_order_write', 'ROLE_API_KEY')")
+    @Timed(value = "order.cancel", description = "Time to cancel an order",
+            percentiles = 0.95)
+    public Order cancelOrder(Long orderId) {
+        Order order = orders.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown order id " + orderId + "."));
+        order.cancel();
+        return orders.save(order);
     }
 }

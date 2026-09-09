@@ -142,6 +142,23 @@ public class Order extends BaseEntity {
         this.status = status;
     }
 
+    /**
+     * PR #41 - the ONLY allowed path to CANCELLED. Encapsulates the order
+     * state machine so no caller (REST, MCP tool, job) can mutate status
+     * without the business rules applying. Once shipped/delivered an order is
+     * immutable; cancelling twice is an idempotency error, not a silent no-op.
+     */
+    public void cancel() {
+        if (status == OrderStatus.CANCELLED) {
+            throw new IllegalStateException("Order " + getId() + " is already cancelled.");
+        }
+        if (status == OrderStatus.SHIPPED || status == OrderStatus.DELIVERED) {
+            throw new IllegalStateException(
+                    "Order " + getId() + " cannot be cancelled once " + status + ".");
+        }
+        this.status = OrderStatus.CANCELLED;
+    }
+
     public BigDecimal getTotalAmount() {
         return totalAmount;
     }

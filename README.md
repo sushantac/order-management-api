@@ -1550,6 +1550,62 @@ how a conversation id actually reaches the advisor in Spring AI 1.0.0: there is
 
 ---
 
+## PR #41 (bonus) — Guarded write tool: `cancel_order` (the first mutation)
+
+> Follow-up to PRs #38–#40: every tool so far was read-only — safety came from
+> "nothing can change." This PR adds the first **write** capability on the MCP
+> server (`cancel_order`) and makes the guard rails the point: feature-gated
+> off by default, per-call `confirmed=true`, service-level `order_write`
+> authorization, domain state-machine rules, audit logging, PII-free replies —
+> and, the biggest lesson, the **agent still can never call it**.
+
+**Aspect learned:** how to add a mutating capability to an LLM surface without
+lowering its security bar — the difference between an *ergonomic* rail
+(confirmation flag) and the *real* boundary (service-layer `@PreAuthorize` +
+domain state machine), and how to make the armed capability structurally
+unreachable by the model via a separate tool hierarchy.
+
+### What changed
+- [x] **`app.mcp.write-tool.enabled` gate** — `CancelOrderTool` (and every
+      future write tool) is a `@Bean` only when the property is `true`; the
+      default app advertises read-only tools only (`McpServerSdkIntegrationTest`
+      asserts `cancel_order` is absent)
+- [x] **`AbstractMcpWriteTool`** — a *separate* base class (not a subclass of
+      the read base), so the auto-discovery (`List<AbstractMcpReadOnlyTool>` +
+      `List<AbstractMcpWriteTool>`) can reason about writes by type; agent tool
+      collection physically excludes them
+- [x] **`cancel_order`** — schema requires `orderId` + `confirmed`; anything but
+      `confirmed=true` refuses ("…confirmed must be exactly true…"); success
+      returns order number + new status only (never customer PII) and writes a
+      structured `mcp.cancel-order` audit line
+- [x] **`OrderService.cancelOrder(Long)`** — `@Transactional`,
+      `@PreAuthorize("@securityProperties.enabled == false or hasAnyAuthority('SCOPE_order_write', 'ROLE_API_KEY')")`,
+      `@Timed("order.cancel")`; unknown id → `IllegalArgumentException`
+- [x] **`Order.cancel()`** — domain state machine: PLACED/CONFIRMED → CANCELLED;
+      already-cancelled and shipped/delivered orders are refused
+- [x] **17 new tests** — `OrderStatusTransitionTest` (5, pure domain),
+      `CancelOrderToolTest` (4, tool logic incl. "never touches the service
+      without confirmation"), `AgentToolSetTest` (agent surface stays
+      strictly read-only), `OrderServiceTest` (+4, committed DB semantics),
+      `McpServerWriteToolIntegrationTest` (3, full MCP round-trip with the gate
+      enabled)
+
+### Key questions answered
+1. **How do you let an LLM surface mutate state safely?** Rails, in order:
+   gate so the capability doesn't exist by default; keep write tools in a
+   hierarchy the agent's tool collection never sees; require an explicit
+   confirmation argument; enforce the real authorization in the service layer;
+   keep the domain rules on the entity; audit every success; return no PII.
+2. **Why is the confirmation flag "not security"?** It's an ergonomic guard
+   against accidental calls (absent/`false`/string `"true"` all refuse). The
+   boundary is the `@PreAuthorize` scope/API-key check plus the state machine;
+   the gate and agent-separation minimize the surface in the first place.
+3. **Why a second tool base class?** So "write" is a type, not a naming
+   convention — the MCP server merges both lists by type and the agent
+   `AgentToolSet` test asserts no write-name ever appears in its surface.
+
+---
+
 ## Learning Roadmap
 
 | # | Aspect | # | Aspect |
@@ -1574,6 +1630,7 @@ how a conversation id actually reaches the advisor in Spring AI 1.0.0: there is
 | 18 | JPA Events & Listeners | 36 (bonus) | MCP Server (AI Integration) |
 | 37 (bonus) | Official MCP Spring SDK on Boot 3.4 (Spring 6.2) | 38 (bonus) | RAG — `docs_search` (DeepSeek + Ollama) |
 | 39 (bonus) | Agentic tool-calling — `agentic_ask` | 40 (bonus) | Chat memory — multi-turn `agentic_ask` |
+| 41 (bonus) | Guarded write — `cancel_order` | 42 (next) | Open for you to choose |
 
 ---
 
