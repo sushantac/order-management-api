@@ -8,8 +8,6 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
@@ -20,27 +18,27 @@ import static org.mockito.Mockito.*;
 
 /**
  * Tests the RAG service: retrieving relevant documentation chunks and
- * generating grounded answers using a mocked LLM.
+ * generating grounded answers using a mocked LLM and retrieval engine.
  */
 class RagServiceTest {
 
-    private VectorStore vectorStore;
+    private RetrievalEngine retrievalEngine;
     private ChatModel chatModel;
     private RagService ragService;
 
     @BeforeEach
     void setUp() {
-        vectorStore = mock(VectorStore.class);
+        retrievalEngine = mock(RetrievalEngine.class);
         chatModel = mock(ChatModel.class);
         RagProperties props = new RagProperties(true, "classpath:docs/**/*.md", 800, 200, 3);
-        ragService = new RagService(vectorStore, chatModel, props);
+        ragService = new RagService(retrievalEngine, chatModel, props);
     }
 
     @Test
     void answerRetrievesChunksAndGeneratesGroundedResponse() {
         Document doc = new Document("Orders use optimistic locking for stock.",
                 Map.of("source", "01-orders.md"));
-        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(doc));
+        when(retrievalEngine.retrieve(anyString(), anyInt())).thenReturn(List.of(doc));
         ChatResponse response = new ChatResponse(List.of(
                 new Generation(new AssistantMessage("Optimistic locking is used."))));
         when(chatModel.call(any(Prompt.class))).thenReturn(response);
@@ -48,13 +46,13 @@ class RagServiceTest {
         String answer = ragService.answer("How does stock locking work?");
 
         assertThat(answer).isEqualTo("Optimistic locking is used.");
-        verify(vectorStore).similaritySearch(any(SearchRequest.class));
+        verify(retrievalEngine).retrieve("How does stock locking work?", 3);
         verify(chatModel).call(any(Prompt.class));
     }
 
     @Test
     void answerReturnsHelpfulMessageWhenNoChunksFound() {
-        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+        when(retrievalEngine.retrieve(anyString(), anyInt())).thenReturn(List.of());
 
         String answer = ragService.answer("Quantum computing basics?");
 
@@ -63,10 +61,10 @@ class RagServiceTest {
     }
 
     @Test
-    void retrieveReturnsDocumentsFromVectorStore() {
+    void retrieveReturnsDocumentsFromRetrievalEngine() {
         Document doc = new Document("Kafka outbox pattern.",
                 Map.of("source", "09-integration.md"));
-        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(doc));
+        when(retrievalEngine.retrieve(anyString(), anyInt())).thenReturn(List.of(doc));
 
         List<Document> results = ragService.retrieve("How does event publishing work?");
 
@@ -78,7 +76,7 @@ class RagServiceTest {
     void promptIncludesSourceAttributionInContext() {
         Document doc = new Document("DeepSeek handles answer generation.",
                 Map.of("source", "11-mcp-ai-integration.md"));
-        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(doc));
+        when(retrievalEngine.retrieve(anyString(), anyInt())).thenReturn(List.of(doc));
         ChatResponse response = new ChatResponse(List.of(
                 new Generation(new AssistantMessage("The RAG pipeline works."))));
         when(chatModel.call(any(Prompt.class))).thenReturn(response);

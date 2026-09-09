@@ -8,8 +8,6 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -18,9 +16,13 @@ import java.util.stream.Collectors;
 
 /**
  * Retrieval-Augmented Generation service: retrieves relevant documentation
- * chunks from the vector store and generates grounded answers using DeepSeek.
+ * chunks and generates grounded answers using the configured chat model.
  *
  * <p>Only active when {@code app.rag.enabled=true}.
+ *
+ * <p>PR #43: retrieval is delegated to the configured {@link RetrievalEngine}
+ * (dense-only or hybrid per {@code app.rag.retrieval-mode}) instead of talking
+ * to the {@code VectorStore} directly.
  */
 @Service
 @ConditionalOnProperty(prefix = "app.rag", name = "enabled", havingValue = "true")
@@ -38,12 +40,12 @@ public class RagService {
             %s
             """;
 
-    private final VectorStore vectorStore;
+    private final RetrievalEngine retrievalEngine;
     private final ChatModel chatModel;
     private final RagProperties ragProperties;
 
-    public RagService(VectorStore vectorStore, ChatModel chatModel, RagProperties ragProperties) {
-        this.vectorStore = vectorStore;
+    public RagService(RetrievalEngine retrievalEngine, ChatModel chatModel, RagProperties ragProperties) {
+        this.retrievalEngine = retrievalEngine;
         this.chatModel = chatModel;
         this.ragProperties = ragProperties;
     }
@@ -55,8 +57,7 @@ public class RagService {
      * @return the answer text with source attribution
      */
     public String answer(String question) {
-        List<Document> relevantDocs = vectorStore.similaritySearch(
-                SearchRequest.builder().query(question).topK(ragProperties.topK()).build());
+        List<Document> relevantDocs = retrievalEngine.retrieve(question, ragProperties.topK());
 
         if (relevantDocs.isEmpty()) {
             return "No relevant documentation found for your question. "
@@ -85,7 +86,6 @@ public class RagService {
      * Retrieves relevant chunks without LLM generation (for debugging/testing).
      */
     public List<Document> retrieve(String question) {
-        return vectorStore.similaritySearch(
-                SearchRequest.builder().query(question).topK(ragProperties.topK()).build());
+        return retrievalEngine.retrieve(question, ragProperties.topK());
     }
 }

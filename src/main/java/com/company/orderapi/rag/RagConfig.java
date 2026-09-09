@@ -23,11 +23,40 @@ import javax.sql.DataSource;
  * The schema (vector extension, table, HNSW index) is created idempotently on
  * first use via {@code initializeSchema(true)}. The {@link VectorIndexStore}
  * bean is the read-side lens that the incremental re-indexer needs.
+ *
+ * <p>PR #43: retrieval is behind a single {@link RetrievalEngine} seam. The
+ * hybrid engine fuses the shared pgvector store's cosine search (dense) with
+ * Postgres full-text BM25 ({@link LexicalRetrievalEngine}) and re-ranks via
+ * {@code app.rag.retrieval.*}. The {@code retrievalEngine} bean returns the
+ * dense-only or hybrid strategy per {@code app.rag.retrieval-mode}.
  */
 @Configuration
 @EnableConfigurationProperties(RagProperties.class)
 @ConditionalOnProperty(prefix = "app.rag", name = "enabled", havingValue = "true")
 public class RagConfig {
+
+    @Bean
+    public DenseRetrievalEngine denseRetrievalEngine(VectorStore vectorStore) {
+        return new DenseRetrievalEngine(vectorStore);
+    }
+
+    @Bean
+    public LexicalRetrievalEngine lexicalRetrievalEngine(JdbcTemplate jdbcTemplate,
+                                                         RagProperties ragProperties) {
+        return new LexicalRetrievalEngine(jdbcTemplate, ragProperties);
+    }
+
+    @Bean
+    public RetrievalEngine retrievalEngine(DenseRetrievalEngine denseRetrievalEngine,
+                                           LexicalRetrievalEngine lexicalRetrievalEngine,
+                                           EmbeddingModel embeddingModel,
+                                           RagProperties ragProperties) {
+        return switch (ragProperties.retrievalMode()) {
+            case DENSE -> denseRetrievalEngine;
+            case HYBRID -> new HybridRetrievalEngine(
+                    denseRetrievalEngine, lexicalRetrievalEngine, embeddingModel, ragProperties.retrieval());
+        };
+    }
 
     @Bean
     public VectorStore vectorStore(EmbeddingModel embeddingModel, DataSource dataSource,

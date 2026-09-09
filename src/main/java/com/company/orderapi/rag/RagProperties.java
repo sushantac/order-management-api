@@ -14,6 +14,12 @@ import org.springframework.boot.context.properties.bind.ConstructorBinding;
  * table on the app's own PostgreSQL ({@code vector-table} /
  * {@code embedding-dimensions}), and the retrieval-eval harness
  * ({@code app.rag.eval.*}) can gate deploys on measured top-k retrieval quality.
+ *
+ * <p>PR #43 addition: {@code retrieval-mode} switches the retrieval half of RAG
+ * between dense-only (pre-#43 behaviour) and hybrid. Hybrid fuses dense
+ * embeddings with Postgres full-text via {@code rrf-k} (Reciprocal Rank Fusion)
+ * and re-ranks for diversity with MMR ({@code retrieval.mmr-enabled} /
+ * {@code retrieval.mmr-lambda}).
  */
 @ConfigurationProperties(prefix = "app.rag")
 public record RagProperties(
@@ -24,6 +30,8 @@ public record RagProperties(
         int topK,
         int embeddingDimensions,
         String vectorTable,
+        RetrievalMode retrievalMode,
+        RetrievalSettings retrieval,
         RagEvalProperties eval
 ) {
     /**
@@ -42,6 +50,8 @@ public record RagProperties(
         if (topK <= 0) topK = 5;
         if (embeddingDimensions <= 0) embeddingDimensions = 768; // nomic-embed-text default
         if (vectorTable == null || vectorTable.isBlank()) vectorTable = "vector_store";
+        if (retrievalMode == null) retrievalMode = RetrievalMode.HYBRID;
+        if (retrieval == null) retrieval = new RetrievalSettings(true, 0.5, 60);
         if (eval == null) {
             eval = new RagEvalProperties(false, "classpath:rag/eval/golden-questions.json", 0.0);
         }
@@ -50,7 +60,41 @@ public record RagProperties(
     /** Compact convenience constructor used by the pre-#42 unit tests. */
     public RagProperties(boolean enabled, String docsLocation, int chunkSize,
                          int chunkOverlap, int topK) {
-        this(enabled, docsLocation, chunkSize, chunkOverlap, topK, 768, "vector_store", null);
+        this(enabled, docsLocation, chunkSize, chunkOverlap, topK, 768,
+                "vector_store", RetrievalMode.HYBRID, null, null);
+    }
+
+    /**
+     * Which retrieval strategy to wire as the {@code RetrievalEngine} bean
+     * ({@code app.rag.retrieval-mode}).
+     */
+    public enum RetrievalMode {
+        /** Embedding similarity only - the pre-#43 behaviour. */
+        DENSE,
+        /** Dense + lexical full-text fused with RRF, then MMR-reranked. */
+        HYBRID
+    }
+
+    /**
+     * Hybrid retrieval tuning ({@code app.rag.retrieval.*}).
+     *
+     * <p>{@code rrf-k}: the constant in the RRF formula {@code 1 / (rrfK +
+     * rank)}; the standard of 60 is rarely worth touching.
+     *
+     * <p>{@code mmr-lambda} in {@code [0,1]}: {@code 1} = pure relevance (keeps
+     * dense/lexical order), lower values trade relevance for topic diversity
+     * across a multi-part query. {@code 0.5} is the typical starting point.
+     */
+    public record RetrievalSettings(
+            boolean mmrEnabled,
+            double mmrLambda,
+            int rrfK
+    ) {
+        public RetrievalSettings {
+            if (mmrLambda < 0) mmrLambda = 0;
+            if (mmrLambda > 1) mmrLambda = 1;
+            if (rrfK <= 0) rrfK = 60;
+        }
     }
 
     /**

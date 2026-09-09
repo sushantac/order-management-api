@@ -6,7 +6,7 @@ Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
 > **Status: 🎉 All 35 learning PRs + bonus PRs #36 (MCP server), #37 (official MCP Spring SDK, Boot 3.4), #38 (RAG — `docs_search`), #39 (agentic tool-calling — `agentic_ask`), #40 (chat memory — multi-turn `agentic_ask`), #41 (guarded write — `cancel_order`) and #42 (RAG productionization — pgvector + re-index + retrieval eval) merged to `develop` — journey complete (final suite: 183 tests, 0 failures).**
-> See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence (plus the #36–#42 AI bonuses).
+> See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence (plus the #36–#43 AI bonuses).
 >
 > 📚 **Study guides:** [Learning document](docs/learnings/README.md) (concepts → real code)
 > · [Interview cheat sheets](docs/interview-cheat-sheets/README.md) (rapid revision pack)
@@ -1661,6 +1661,53 @@ ids + content hashes make re-indexing idempotent and cheap), and *measurement*
    hash-embedded tests are plumbing-only (they can prove the harness, never
    shoulder the threshold).
 
+## PR #43 (bonus) — Hybrid retrieval: dense + Postgres full-text (RRF + MMR)
+
+> PR #42 made retrieval *measurable* and the measurement exposed the honest
+> weakness of a dense-only retriever: embeddings are bad at exact vocabulary.
+> Tool ids, error codes, identifiers (`reindex_docs`, `cancel_order`) — a chunk
+> can be semantically "about" a topic and still never surface for the query that
+> names it exactly. This PR makes retrieval hybrid: cosine with BM25-style
+> Postgres full-text, fused by Reciprocal Rank Fusion and re-ranked for topical
+> diversity by MMR — with the #42 eval harness as the before/after ruler.
+
+**Aspect learned:** hybrid retrieval is *not* "avg the two scores" — cosine and
+`ts_rank` are incomparable units, so the fusion must be rank-based (RRF,
+`1 / (rrfK + rank)`), and after fusion a relevance-maximizer tends to hand all
+top-k slots to one dominant topic, which is where MMR's *diversity penalty*
+(lambda) earns its keep.
+
+### What changed
+- [x] **`RetrievalEngine` seam** — `retrieve(query, topK)`, wiring decided by
+      `app.rag.retrieval-mode` (`DENSE` = pre-#43 behaviour, `HYBRID` default);
+      `RagService` and the #42 eval harness now retrieve through it unchanged
+- [x] **`LexicalRetrievalEngine`** — Postgres full-text over the *same*
+      `vector_store` table: `to_tsvector('english', content) @@
+      plainto_tsquery(?,…)`, scored `ts_rank`, lazy/idempotent GIN index behind
+      an `AtomicBoolean` so startup order never matters
+- [x] **`HybridRetrievalEngine`** — each engine queried at `4× topK` (min 20),
+      fused by RRF (`rrf-k=60`), MMR-reranked when enabled
+      (`retrieval.mmr-enabled`, `retrieval.mmr-lambda` clamped to `[0,1]`);
+      fusion dedups across lists by the #42 content-hash `Document` ids
+- [x] **5 new + 2 updated tests** — `HybridRetrievalEngineTest` (RRF ordering
+      verified against hand-computed scores, MMR proven at both λ extremes,
+      widened candidate pool), `PgVectorRagIntegrationTest` grows lexical
+      term-containment ("outbox" → chunks that actually contain it) and the
+      default hybrid wiring; `RagServiceTest`/`RagEvalRunnerTest` moved to the
+      engine / new `RagProperties` shape
+
+### Key questions answered
+1. **Why not blend scores?** Cosine and `ts_rank` have no shared scale; RRF
+   consumes only *ranks*, which are unit-free and transferable — no magic per
+   corpus weight.
+2. **Why would dense alone miss?** The query names `reindex_docs`; the relevant
+   chunk describes it in prose. Embeddings track *meaning*, full-text tracks
+   *occurrence* — the two only ever agree for most queries, and "most" is
+   exactly the gap fusion closes.
+3. **When can the #42 hit-rate gate be raised?** After this PR, dense vs hybrid
+   is measurable on the same goldens by toggling `retrieval-mode` — fix the
+   retriever *first*, then set `min-hit-rate`, never before.
+
 ---
 
 ## Learning Roadmap
@@ -1688,6 +1735,7 @@ ids + content hashes make re-indexing idempotent and cheap), and *measurement*
 | 37 (bonus) | Official MCP Spring SDK on Boot 3.4 (Spring 6.2) | 38 (bonus) | RAG — `docs_search` (DeepSeek + Ollama) |
 | 39 (bonus) | Agentic tool-calling — `agentic_ask` | 40 (bonus) | Chat memory — multi-turn `agentic_ask` |
 | 41 (bonus) | Guarded write — `cancel_order` | 42 (bonus) | RAG productionization — pgvector + re-index + retrieval eval |
+| 43 (bonus) | Hybrid retrieval — dense + Postgres full-text (RRF + MMR) | 44 (next, bonus) | Open — your choice |
 
 ---
 
