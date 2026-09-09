@@ -1457,6 +1457,55 @@ Teach guide: `docs/additions/01-rag-and-docs-search.md`.
 
 ---
 
+## PR #39 (bonus) — Agentic tool-calling: the API decides (`agentic_ask`)
+
+> Follow-up to PR #38: MCP/RAG let an assistant call the API and ask it about
+> itself. This PR gives the API's own DeepSeek chat model the same read-only
+> tools as **functions it decides to call** — an agent that chains
+> `product_search` + `order_status` + `docs_search` to answer one task.
+
+**Aspect learned:** function calling / agentic loops — how a model advertises,
+picks and chains real methods, how to expose it safely, and how Spring AI's
+`ChatClient` actually carries tools to the model (decompiled, not assumed).
+
+### What changed
+- [x] **`com.company.orderapi.agent`**: `AgentToolSet` exposes the four existing
+      read-only MCP tools as `@Tool`-annotated functions (same `product_search` /
+      `order_status` / `docs_search` / `api_health` names, same PII boundary);
+      `AgentConfig` turns them into a `ToolCallbackProvider`; `AgentService`
+      builds a `ChatClient` with a system prompt ("call a tool, don't guess,
+      chain calls, never claim customer data") + the tool callbacks as
+      `DefaultToolCallingChatOptions`
+- [x] **One code path, two protocols**: `AbstractMcpReadOnlyTool.execute(...)`
+      is now the shared invocation contract — MCP `tools/call` and agent
+      function calling both delegate to the same read-only tools
+- [x] **`agentic_ask` MCP tool**: the agent as just another read-only tool on
+      `/mcp` — one `task`, multi-step reasoning happens server-side
+- [x] **Real gotcha fixed + locked by a test**: Spring AI 1.0.0 merges tool
+      callbacks into the generated `Prompt` only when `ChatOptions` is already a
+      `ToolCallingChatOptions` (verified by decompiling
+      `DefaultChatClientUtils`). `.defaultToolCallbacks(...)` alone silently
+      drops them; the agent embeds them in `.defaultOptions(...)` and the test
+      captures the real `Prompt` and asserts the four tools are in
+      `getToolCallbacks()`
+- [x] **9 new pure unit tests** (`AgentToolSetTest`, `AgentServiceTest`):
+      registration under MCP names, delegation, the PII guarantee (order result
+      never contains the customer email), blank-task rejection, system-prompt
+      wiring, and the tools-reach-the-model proof
+
+### Key questions answered
+1. **Agent vs MCP?** Complementary: MCP is the transport a caller uses to reach
+   the tools; function calling is the loop a model runs *inside* a chat. Here
+   the tools are identical — the same beans, invoked through one `execute`.
+2. **How is it safe?** Structurally: the agent can only call read-only,
+   PII-free tools that physically cannot touch the customer association; there
+   is no write tool; auth is unchanged; no memory is retained between tasks.
+3. **Why embed tools in ChatOptions instead of registering them?** See the
+   gotcha above — the framework's merge is conditional, and the unit test that
+   captures the Prompt is the guard.
+
+---
+
 ## Learning Roadmap
 
 | # | Aspect | # | Aspect |
@@ -1480,6 +1529,7 @@ Teach guide: `docs/additions/01-rag-and-docs-search.md`.
 | 17 | DTO Projections | 35 | Enterprise Features (Optional) |
 | 18 | JPA Events & Listeners | 36 (bonus) | MCP Server (AI Integration) |
 | 37 (bonus) | Official MCP Spring SDK on Boot 3.4 (Spring 6.2) | 38 (bonus) | RAG — `docs_search` (DeepSeek + Ollama) |
+| 39 (bonus) | Agentic tool-calling — `agentic_ask` | | |
 
 ---
 
