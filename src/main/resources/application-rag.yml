@@ -26,6 +26,18 @@ app:
     # embedding-dimensions must match the embedding model (nomic-embed-text = 768).
     embedding-dimensions: 768
     vector-table: vector_store
+    # PR #43 - retrieval strategy: DENSE (embeddings only) or HYBRID (dense +
+    # Postgres full-text fused via Reciprocal Rank Fusion, then MMR re-rank).
+    # RETRIEVAL-MODE IS A WIRING DECISION: the code base treats dense as the
+    # baseline and hybrid as the default.
+    retrieval-mode: hybrid
+    # Hybrid tuning. rrf-k=60 is the canonical RRF constant. mmr-lambda=1 keeps
+    # pure relevance order; lower trades relevance for topical diversity (0.5 is
+    # the typical starting point for multi-part questions).
+    # retrieval:
+    #   mmr-enabled: true
+    #   mmr-lambda: 0.5
+    #   rrf-k: 60
     # Retrieval-eval harness (PR #42): report-only by default. Set min-hit-rate
     # (e.g. 0.7) to gate startup on measured retrieval quality.
     # eval:

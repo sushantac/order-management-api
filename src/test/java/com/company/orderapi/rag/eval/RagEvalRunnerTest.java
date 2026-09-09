@@ -28,7 +28,8 @@ class RagEvalRunnerTest {
         RagProperties.RagEvalProperties eval =
                 new RagProperties.RagEvalProperties(true, "classpath:rag/eval/golden-questions.json", minHitRate);
         RagProperties props = new RagProperties(
-                true, "classpath:docs/**/*.md", 800, 200, 3, 768, "vector_store", eval);
+                true, "classpath:docs/**/*.md", 800, 200, 3, 768,
+                "vector_store", RagProperties.RetrievalMode.HYBRID, null, eval);
         return new RagEvalRunner(ragService, props, new RagRetrievalEvaluator(),
                 objectMapper, new DefaultResourceLoader());
     }

@@ -349,6 +349,10 @@ Full suite: **135 tests, all green** (127 pre-existing + 8 new).
 - **The answer is only as good as the retrieval.** If `top-k` is too small or
   the embedding model is weak, the right chunk never reaches the prompt. That
   is why `searchRequest.topK(...)` is config-driven (`app.rag.top-k`).
+  **Addressed since (#43):** retrieval is hybrid — a `RetrievalEngine` seam
+  fuses the dense path with Postgres full-text (RRF + MMR diversity) and the
+  `retrieval-mode` toggle makes the before/after measurable on #42's golden
+  harness — see `06-hybrid-retrieval.md`.
 - **Cost/shape of the corpus matters.** The system prompt says "use ONLY the
   context"; for facts not in the corpus the tool should say "not found", and
   `answerReturnsHelpfulMessageWhenNoChunksFound` locks that behaviour in.

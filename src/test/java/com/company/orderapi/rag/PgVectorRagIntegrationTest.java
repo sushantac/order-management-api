@@ -76,6 +76,12 @@ class PgVectorRagIntegrationTest {
     @Autowired
     private VectorStore vectorStore;
 
+    @Autowired
+    private RetrievalEngine retrievalEngine;
+
+    @Autowired
+    private LexicalRetrievalEngine lexicalRetrievalEngine;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @TestConfiguration
@@ -193,6 +199,28 @@ class PgVectorRagIntegrationTest {
         assertThat(report.items()).hasSize(goldens.size());
         assertThat(report.items()).allMatch(item -> item.retrievedSources().size() <= 5);
         assertThat(report.hits()).isBetween(0, goldens.size());
+    }
+
+    @Test
+    void retrievalEngineIsHybridByDefault() {
+        assertThat(retrievalEngine)
+                .as("default app.rag.retrieval-mode must wire the hybrid engine")
+                .isInstanceOf(HybridRetrievalEngine.class);
+        assertThat(lexicalRetrievalEngine).isNotNull();
+    }
+
+    @Test
+    void lexicalRetrievalReturnsChunksThatActuallyContainTheQueryTerm() throws Exception {
+        ingestionService.reindex();
+
+        List<Document> results = lexicalRetrievalEngine.retrieve("outbox", 5);
+
+        // The whole point of the lexical path: whatever comes back provably
+        // contains the exact vocabulary, which dumb-ish dense embeddings miss.
+        assertThat(results).isNotEmpty();
+        assertThat(results).allMatch(doc -> doc.getText().toLowerCase().contains("outbox"));
+        assertThat(results).allMatch(doc ->
+                String.valueOf(doc.getMetadata().get("source")).endsWith(".md"));
     }
 
     @Test
