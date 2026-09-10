@@ -1708,6 +1708,65 @@ top-k slots to one dominant topic, which is where MMR's *diversity penalty*
    is measurable on the same goldens by toggling `retrieval-mode` — fix the
    retriever *first*, then set `min-hit-rate`, never before.
 
+## PR #44 (bonus) — The retrieval-eval gate, earned: real-model measurement
+
+> PRs #42/#43 built the harness (goldens → hit-rate@k, report-only gate) and a
+> second retriever (hybrid full-text) — but the gate was still `0` because
+> nobody had *measured* the number. This PR runs the harness for the first time
+> with the real model over the real corpus. It failed immediately and usefully:
+> the eval ran **before** ingestion and measured an empty store; then MMR
+> (shipped on in #43) scored *worse* than RRF-only — 50% vs 75% hit-rate@5 —
+> on single-topic goldens. Four latent startup bugs in the rag profile surfaced
+> and were fixed, and the gate was only then set to a defensible `0.7` — earned,
+> never predicted.
+
+**Aspect learned:** a deploy gate and a retriever both need a *measured runway*
+before they mean anything — errors flood in as soon as you run what you built,
+and a threshold is only honest after the table exists. The single most valuable
+artifact is the measured table:
+
+| retrieval-mode | hit-rate@5 | top-1 accuracy | precision@5 |
+|---|---|---|---|
+| `DENSE` (baseline) | 75.0% | 41.7% | 15.0% |
+| `HYBRID` + RRF (`mmr-enabled: false`) | 75.0% | **50.0%** | 15.0% |
+| `HYBRID` + RRF + MMR (λ=0.5) | 50.0% | 41.7% | 10.0% |
+
+### What changed
+- [x] **Eval-before-ingest ordering bug fixed** — `RagEvalRunner` was an
+      `ApplicationRunner` (fires before `ApplicationReadyEvent` listeners), so
+      it measured an *empty* store; both are now ordered ready-event listeners
+      (`@Order(HIGHEST_PRECEDENCE)` ingest, `LOWEST_PRECEDENCE` eval)
+- [x] **Run-the-gate chrome (4 latent bugs)** — explicit `spring.ai.model.chat:
+      deepseek` (two ChatModel beans fought), `@Lazy` ChatModel in `RagService`
+      (agent↔ChatModel tool-callback cycle failed startup), compose Postgres →
+      `pgvector/pgvector:pg16` (not a single rag-profile boot had ever worked)
+- [x] **MMR shipped default flipped OFF** — measured damage, not opinion:
+      λ=0.5 diversity penalty costs 25pts of hit-rate@5 on single-topic goldens;
+      stays opt-in (`app.rag.retrieval.mmr-enabled`)
+- [x] **Persisted eval report** — `app.rag.eval.report-location`
+      (`target/rag-eval-report.json`): timestamp, retrieval-mode, hit-rate/top-1/
+      precision@k + full per-question HIT/MISS trail (a fancier log that
+      survives rotation); written as `RagEvalReportSnapshot`
+- [x] **Earned gate activated** — `app.rag.eval.min-hit-rate: 0.7` in the rag
+      profile (measured 75%, one notch below), goldens untouched; verified both
+      directions with the real model: default profile passes, forcing `0.9`
+      fails startup with `RAG retrieval eval gate FAILED`
+- [x] **2 new + 2 updated tests** — runner report-write/snapshot (self-contained,
+      temp-dir, hash-backed), plus eval/RAG suites adjusted for the new
+      `report-location` property and listener shape; suite 189 green
+
+### Key questions answered
+1. **Why does MMR lose here?** Recall-tier metrics like hit-rate@k already get
+   diversity from top-5; MMR's penalty only re-orders single-topic answers out
+   of the list. It's an opt-in knob for genuinely multi-topic questions now.
+2. **Why keep the goldens fixed?** Editing them until the retriever passes would
+   be teaching to the test — the anti-pattern the discipline exists to block.
+   Two "misses" actually retrieve *identical-content twin files* in another
+   folder; the report trail records that honestly.
+3. **Haven't #38–#43 always been runnable?** No — that's the lesson. The rag
+   profile never booted end-to-end before this PR; four bugs (§ What changed)
+   prove "gated, report-only" and "actually runnable" are different states.
+
 ---
 
 ## Learning Roadmap
@@ -1735,7 +1794,8 @@ top-k slots to one dominant topic, which is where MMR's *diversity penalty*
 | 37 (bonus) | Official MCP Spring SDK on Boot 3.4 (Spring 6.2) | 38 (bonus) | RAG — `docs_search` (DeepSeek + Ollama) |
 | 39 (bonus) | Agentic tool-calling — `agentic_ask` | 40 (bonus) | Chat memory — multi-turn `agentic_ask` |
 | 41 (bonus) | Guarded write — `cancel_order` | 42 (bonus) | RAG productionization — pgvector + re-index + retrieval eval |
-| 43 (bonus) | Hybrid retrieval — dense + Postgres full-text (RRF + MMR) | 44 (next, bonus) | Open — your choice |
+| 43 (bonus) | Hybrid retrieval — dense + Postgres full-text (RRF + MMR) | 44 (bonus) | RAG eval gate, earned — real-model measurement, MMR off, gate 0.7 |
+| 45 (next, bonus) | Open — your choice | | |
 
 ---
 

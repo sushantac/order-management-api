@@ -51,9 +51,9 @@ public record RagProperties(
         if (embeddingDimensions <= 0) embeddingDimensions = 768; // nomic-embed-text default
         if (vectorTable == null || vectorTable.isBlank()) vectorTable = "vector_store";
         if (retrievalMode == null) retrievalMode = RetrievalMode.HYBRID;
-        if (retrieval == null) retrieval = new RetrievalSettings(true, 0.5, 60);
+        if (retrieval == null) retrieval = new RetrievalSettings(false, 0.5, 60);
         if (eval == null) {
-            eval = new RagEvalProperties(false, "classpath:rag/eval/golden-questions.json", 0.0);
+            eval = new RagEvalProperties(false, "classpath:rag/eval/golden-questions.json", 0.0, null);
         }
     }
 
@@ -78,12 +78,20 @@ public record RagProperties(
     /**
      * Hybrid retrieval tuning ({@code app.rag.retrieval.*}).
      *
+     * <p>{@code mmr-enabled}: whether to MMR-rerank after RRF fusion.
+     *
      * <p>{@code rrf-k}: the constant in the RRF formula {@code 1 / (rrfK +
      * rank)}; the standard of 60 is rarely worth touching.
      *
      * <p>{@code mmr-lambda} in {@code [0,1]}: {@code 1} = pure relevance (keeps
      * dense/lexical order), lower values trade relevance for topic diversity
-     * across a multi-part query. {@code 0.5} is the typical starting point.
+     * across a multi-part query.
+     *
+     * <p>PR #44 measured-default decision: {@code mmr-enabled} defaults to
+     * {@code false}. Against the real nomic-embed-text corpus, MMR at
+     * {@code 0.5} took hit-rate@5 from 75% to 50% (single-topic goldens; top-5
+     * already has diversity) while RRF alone held 75% and lifted top-1
+     * accuracy from 41.7% to 50%. Details in docs/additions/07.
      */
     public record RetrievalSettings(
             boolean mmrEnabled,
@@ -105,17 +113,27 @@ public record RagProperties(
      * <p>{@code min-hit-rate} of {@code 0} = report-only (the only safe default
      * before a corpus's retrieval quality has been measured once). Raise it to
      * gate deploys on retrieval quality regressions.
+     *
+     * <p>PR #44: every run additionally writes a self-describing JSON snapshot
+     * (timestamp, retrieval-mode, per-question HIT/MISS trail) to
+     * {@code report-location}, defaulting to {@code target/rag-eval-report.json}
+     * (a build artifact - git-ignored) so evaluations have an audit trail and
+     * the dense-vs-hybrid comparison survives log rotation.
      */
     public record RagEvalProperties(
             boolean enabled,
             String goldensLocation,
-            double minHitRate
+            double minHitRate,
+            String reportLocation
     ) {
         public RagEvalProperties {
             if (goldensLocation == null || goldensLocation.isBlank()) {
                 goldensLocation = "classpath:rag/eval/golden-questions.json";
             }
             if (minHitRate < 0) minHitRate = 0;
+            if (reportLocation == null || reportLocation.isBlank()) {
+                reportLocation = "target/rag-eval-report.json";
+            }
         }
     }
 }

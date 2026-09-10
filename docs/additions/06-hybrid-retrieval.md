@@ -2,6 +2,12 @@
 
 **Bonus PR #43.**
 
+> **Measured update (PR #44):** run against the real corpus with nomic-embed-text,
+> hybrid/RRF ties dense on hit-rate@5 (75%) and beats it on top-1 accuracy
+> (50% vs 41.7%), but MMR at λ=0.5 *hurt* (75% → 50%) — single-topic goldens
+> already have diversity in top-5. `mmr-enabled` now defaults to `false`.
+> Full table + reasoning: [07-rag-eval-gate-earned.md](07-rag-eval-gate-earned.md).
+
 PR #42 made retrieval *measurable* (golden questions → hit-rate@k), and that
 measurement exposed the honest weakness of a dense-only retriever: **embeddings
 are bad at exact vocabulary**. Method names, tool ids, error codes and

@@ -9,6 +9,7 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -44,7 +45,8 @@ public class RagService {
     private final ChatModel chatModel;
     private final RagProperties ragProperties;
 
-    public RagService(RetrievalEngine retrievalEngine, ChatModel chatModel, RagProperties ragProperties) {
+    public RagService(RetrievalEngine retrievalEngine, @Lazy ChatModel chatModel,
+                      RagProperties ragProperties) {
         this.retrievalEngine = retrievalEngine;
         this.chatModel = chatModel;
         this.ragProperties = ragProperties;
