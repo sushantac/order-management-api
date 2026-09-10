@@ -35,7 +35,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Testcontainers
 @SpringBootTest
-@EmbeddedKafka(partitions = 1, topics = {"order-events", "order-events.DLT"})
+@EmbeddedKafka(partitions = 1, topics = {
+        "order-events", "order-events.DLT",
+        "order.placed", "order.status.changed", "cart.checkout.initiated"})
 @TestPropertySource(properties = {
         "integration.database.tag=KafkaOutboxIntegrationTest",
         "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
@@ -91,14 +93,14 @@ class KafkaOutboxIntegrationTest {
         long processedBefore = consumer.processed();
         long deadLettersBefore = consumer.deadLetters();
 
-        // 1) Place the order - the outbox row is written in the SAME tx.
+        // 1) Place the order - outbox rows are written in the SAME tx.
         orderService.placeOrder(customer.getId(),
                 List.of(new OrderService.OrderLine(product.getId(), 1)));
-        assertThat(outbox.countByStatus(OutboxStatus.PENDING)).isEqualTo(1);
+        assertThat(outbox.countByStatus(OutboxStatus.PENDING)).isEqualTo(2);
 
-        // 2) The polling publisher forwards PENDING -> Kafka -> mark PUBLISHED.
-        assertThat(publisher.publishPendingNow()).isEqualTo(1);
-        assertThat(outbox.countByStatus(OutboxStatus.PUBLISHED)).isEqualTo(1);
+        // 2) The polling publisher forwards ALL PENDING -> Kafka -> mark PUBLISHED.
+        assertThat(publisher.publishPendingNow()).isEqualTo(2);
+        assertThat(outbox.countByStatus(OutboxStatus.PUBLISHED)).isEqualTo(2);
         assertThat(outbox.countByStatus(OutboxStatus.PENDING)).isZero();
 
         // 3) The consumer group receives it and acks (manual offset).

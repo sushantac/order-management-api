@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Spring Data repository for {@link Customer}.
@@ -41,6 +42,8 @@ public interface CustomerRepository extends JpaRepository<Customer, Long>,
 
         String getFullName();
     }
+
+    Optional<Customer> findByEmail(String email);
 
     @Query("""
             select c.email as email, c.fullName as fullName

@@ -30,18 +30,24 @@ public class OutboxPublisher {
     private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);
 
     private final OutboxRepository outbox;
-    private final OrderEventProducer producer;
+    private final OrderEventProducer legacyProducer;
+    private final OrderPlacedEventProducer orderPlacedProducer;
+    private final OrderStatusChangedEventProducer statusChangedProducer;
     private final ObjectMapper objectMapper;
     private final int batchSize;
     private final boolean schedulerEnabled;
 
     public OutboxPublisher(OutboxRepository outbox,
-                           OrderEventProducer producer,
+                           OrderEventProducer legacyProducer,
+                           OrderPlacedEventProducer orderPlacedProducer,
+                           OrderStatusChangedEventProducer statusChangedProducer,
                            ObjectMapper objectMapper,
                            @Value("${app.outbox.batch-size:50}") int batchSize,
                            @Value("${app.outbox.scheduler-enabled:true}") boolean schedulerEnabled) {
         this.outbox = outbox;
-        this.producer = producer;
+        this.legacyProducer = legacyProducer;
+        this.orderPlacedProducer = orderPlacedProducer;
+        this.statusChangedProducer = statusChangedProducer;
         this.objectMapper = objectMapper;
         this.batchSize = batchSize;
         this.schedulerEnabled = schedulerEnabled;
@@ -59,9 +65,7 @@ public class OutboxPublisher {
         int published = 0;
         for (OutboxEntry entry : outbox.lockPendingBatch(batchSize)) {
             try {
-                OrderPlacedMessage message = objectMapper.readValue(
-                        entry.getPayload(), OrderPlacedMessage.class);
-                producer.publish(entry.getAggregateId(), message);
+                publishEntry(entry);
                 entry.markPublished();
                 published++;
             } catch (Exception e) {
@@ -73,5 +77,26 @@ public class OutboxPublisher {
         }
         outbox.flush();
         return published;
+    }
+
+    private void publishEntry(OutboxEntry entry) throws Exception {
+        switch (entry.getEventType()) {
+            case "OrderPlacedEventMessage" -> {
+                OrderPlacedEventMessage message = objectMapper.readValue(
+                        entry.getPayload(), OrderPlacedEventMessage.class);
+                orderPlacedProducer.publish(entry.getAggregateId(), message);
+            }
+            case "OrderStatusChangedMessage" -> {
+                OrderStatusChangedMessage message = objectMapper.readValue(
+                        entry.getPayload(), OrderStatusChangedMessage.class);
+                statusChangedProducer.publish(entry.getAggregateId(), message);
+            }
+            default -> {
+                // Legacy OrderPlacedMessage: backward-compatible path.
+                OrderPlacedMessage message = objectMapper.readValue(
+                        entry.getPayload(), OrderPlacedMessage.class);
+                legacyProducer.publish(entry.getAggregateId(), message);
+            }
+        }
     }
 }
