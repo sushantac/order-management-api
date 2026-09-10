@@ -121,6 +121,18 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
+
+        <!--
+          PR #47 - embedded OAuth 2.1 authorization server (the project issues
+          the JWT bearer tokens its own resource server validates). Adds the
+          /oauth2/* endpoints: authorize, token, revoke, jwks + RFC 8414
+          metadata. Tokens are HS256-signed with the SAME secret the resource
+          server uses (SecurityProperties.jwtSecret), so one app is AS + RS.
+        -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-authorization-server</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.retry</groupId>
             <artifactId>spring-retry</artifactId>
