@@ -107,7 +107,7 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: com.company.orderapi.*
+        spring.json.trusted.packages: com.company.orderapi.*,com.ecommerce.*
     listener:
       # MANUAL: the listener acknowledges AFTER it finished processing the
       # message (see OrderEventConsumer) - explicit offset control.
@@ -201,6 +201,9 @@ app:
     topics:
       order-events: order-events
       order-events-dlt: order-events.DLT
+      cart-checkout-initiated: cart.checkout.initiated
+      order-placed: order.placed
+      order-status-changed: order.status.changed
   outbox:
     poll-millis: 2000
     batch-size: 50

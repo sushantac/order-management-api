@@ -38,6 +38,24 @@ public class KafkaConfig {
         return TopicBuilder.name(name).partitions(1).replicas(1).build();
     }
 
+    @Bean
+    public NewTopic cartCheckoutInitiatedTopic(
+            @Value("${app.kafka.topics.cart-checkout-initiated}") String name) {
+        return TopicBuilder.name(name).partitions(1).replicas(1).build();
+    }
+
+    @Bean
+    public NewTopic orderPlacedTopic(
+            @Value("${app.kafka.topics.order-placed}") String name) {
+        return TopicBuilder.name(name).partitions(1).replicas(1).build();
+    }
+
+    @Bean
+    public NewTopic orderStatusChangedTopic(
+            @Value("${app.kafka.topics.order-status-changed}") String name) {
+        return TopicBuilder.name(name).partitions(1).replicas(1).build();
+    }
+
     /**
      * After a short retry budget the record is published to the DLT topic
      * ({@code <topic>.DLT}) so a poison message never blocks the group.

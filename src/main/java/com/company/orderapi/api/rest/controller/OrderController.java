@@ -148,14 +148,12 @@ public class OrderController {
     @PatchMapping("/{id}")
     @Transactional
     public OrderResponse patch(@PathVariable Long id, @RequestBody JsonNode patch) {
-        Order order = orders.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown order " + id));
         if (patch.isArray()) {
             for (JsonNode op : patch) {
                 String opName = op.path("op").asText();
                 String path = op.path("path").asText();
                 if ("replace".equals(opName) && "/status".equals(path)) {
-                    order.setStatus(OrderStatus.valueOf(op.path("value").asText()));
+                    orderService.updateOrderStatus(id, OrderStatus.valueOf(op.path("value").asText()));
                 } else {
                     throw new IllegalArgumentException("Unsupported patch op: " + opName + " " + path);
                 }
@@ -163,7 +161,8 @@ public class OrderController {
         } else {
             throw new IllegalArgumentException("JSON Patch must be an array of operations");
         }
-        orders.flush();
+        Order order = orders.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown order " + id));
         return OrderMapper.toOrderResponse(order);
     }
 

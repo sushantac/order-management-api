@@ -13,7 +13,9 @@ import com.company.orderapi.domain.outbox.OutboxRepository;
 import com.company.orderapi.domain.repository.CustomerRepository;
 import com.company.orderapi.domain.repository.OrderRepository;
 import com.company.orderapi.domain.repository.ProductRepository;
+import com.company.orderapi.messaging.OrderPlacedEventMessage;
 import com.company.orderapi.messaging.OrderPlacedMessage;
+import com.company.orderapi.messaging.OrderStatusChangedMessage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.annotation.Timed;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * PR #20 - the order service: business logic + transactions + ACID.
@@ -120,11 +123,57 @@ public class OrderService {
         OrderPlacedMessage message = new OrderPlacedMessage(order.getId(),
                 order.getOrderNumber(), order.getTotalAmount(), order.getOrderDate());
         outbox.saveAndFlush(OutboxEntry.pending("Order", String.valueOf(order.getId()),
-                "OrderPlacedMessage", write(message)));
+                "OrderPlacedMessage", writeJson(message)));
+
+        // Rich order.placed event for the new platform topic.
+        OrderPlacedEventMessage eventMessage = new OrderPlacedEventMessage(
+                UUID.randomUUID().toString(),
+                order.getId(),
+                order.getOrderNumber(),
+                null,
+                order.getTotalAmount(),
+                order.getItems().stream()
+                        .map(item -> new OrderPlacedEventMessage.OrderItem(
+                                item.getProduct().getId(),
+                                item.getQuantity(),
+                                item.getUnitPrice(),
+                                item.getTotalPrice()))
+                        .toList(),
+                order.getOrderDate());
+        outbox.save(OutboxEntry.pending("Order", String.valueOf(order.getId()),
+                "OrderPlacedEventMessage", writeJson(eventMessage)));
+
         return order;
     }
 
-    private String write(OrderPlacedMessage message) {
+    /**
+     * Updates an order's status and writes an outbox entry for the
+     * {@code order.status.changed} event. Validates that the order exists.
+     *
+     * @return the old status before the change
+     */
+    @Transactional
+    public OrderStatus updateOrderStatus(Long orderId, OrderStatus newStatus) {
+        Order order = orders.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown order " + orderId));
+        OrderStatus oldStatus = order.getStatus();
+        order.setStatus(newStatus);
+        orders.save(order);
+
+        OrderStatusChangedMessage message = new OrderStatusChangedMessage(
+                UUID.randomUUID().toString(),
+                order.getId(),
+                order.getOrderNumber(),
+                oldStatus.name(),
+                newStatus.name(),
+                LocalDateTime.now());
+        outbox.saveAndFlush(OutboxEntry.pending("Order", String.valueOf(order.getId()),
+                "OrderStatusChangedMessage", writeJson(message)));
+
+        return oldStatus;
+    }
+
+    private String writeJson(Object message) {
         try {
             return objectMapper.writeValueAsString(message);
         } catch (JsonProcessingException e) {
