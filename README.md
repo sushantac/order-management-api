@@ -5,8 +5,8 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: 🎉 All 35 learning PRs + bonus PRs #36 (MCP server), #37 (official MCP Spring SDK, Boot 3.4), #38 (RAG — `docs_search`), #39 (agentic tool-calling — `agentic_ask`), #40 (chat memory — multi-turn `agentic_ask`), #41 (guarded write — `cancel_order`), #42 (RAG productionization — pgvector + re-index + retrieval eval) and #43 (hybrid retrieval — dense + Postgres full-text, RRF + MMR) merged to `develop` — journey complete (final suite: 188 tests, 0 failures).**
-> See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence (plus the #36–#43 AI bonuses).
+> **Status: 🎉 All 35 learning PRs + bonus PRs #36 (MCP server), #37 (official MCP Spring SDK, Boot 3.4), #38 (RAG — `docs_search`), #39 (agentic tool-calling — `agentic_ask`), #40 (chat memory — multi-turn `agentic_ask`), #41 (guarded write — `cancel_order`), #42 (RAG productionization — pgvector + re-index + retrieval eval), #43 (hybrid retrieval — dense + Postgres full-text, RRF + MMR) and #44 (RAG eval gate, earned — real-model measurement, MMR off, gate 0.7) merged to `develop` — journey complete (final suite: 189 tests, 0 failures).**
+> See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence (plus the #36–#44 AI bonuses).
 >
 > 📚 **Study guides:** [Learning document](docs/learnings/README.md) (concepts → real code)
 > · [Interview cheat sheets](docs/interview-cheat-sheets/README.md) (rapid revision pack)
