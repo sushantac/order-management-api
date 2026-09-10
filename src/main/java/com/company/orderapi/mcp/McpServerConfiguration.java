@@ -66,7 +66,9 @@ public class McpServerConfiguration {
     public McpStatelessSyncServer mcpServer(
             WebMvcStatelessServerTransport transport,
             List<AbstractMcpReadOnlyTool> readTools,
-            List<AbstractMcpWriteTool> writeTools) {
+            List<AbstractMcpWriteTool> writeTools,
+            McpDocsResourceCatalog docsCatalog,
+            List<AbstractMcpPrompt> prompts) {
 
         List<McpStatelessServerFeatures.SyncToolSpecification> specifications = new java.util.ArrayList<>();
         readTools.stream()
@@ -80,8 +82,18 @@ public class McpServerConfiguration {
 
         return McpServer.sync(transport)
                 .serverInfo("order-management-api-mcp", "1.0.0")
-                .capabilities(McpSchema.ServerCapabilities.builder().tools(true).build())
+                .capabilities(McpSchema.ServerCapabilities.builder()
+                        .tools(true)
+                        .resources(false, false)
+                        .prompts(false)
+                        .build())
                 .tools(specifications.toArray(McpStatelessServerFeatures.SyncToolSpecification[]::new))
+                .resources(docsCatalog.specifications()
+                        .toArray(McpStatelessServerFeatures.SyncResourceSpecification[]::new))
+                .prompts(prompts.stream()
+                        .sorted(Comparator.comparing(AbstractMcpPrompt::name))
+                        .map(AbstractMcpPrompt::specification)
+                        .toArray(McpStatelessServerFeatures.SyncPromptSpecification[]::new))
                 .build();
     }
 }

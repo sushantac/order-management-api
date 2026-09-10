@@ -110,6 +110,89 @@ class McpServerSdkIntegrationTest {
                     .findFirst().orElseThrow();
             assertThat(apiHealth.inputSchema().type()).isEqualTo("object");
             assertThat(apiHealth.inputSchema().properties()).isEmpty();
+            // PR #46: the server advertises resources + prompts capabilities.
+            assertThat(init.capabilities().resources()).isNotNull();
+            assertThat(init.capabilities().prompts()).isNotNull();
+            assertThat(init.capabilities().tools()).isNotNull();
+        }
+    }
+
+    @Test
+    void listResourcesExposesTheDocsCorpus() {
+        try (McpSyncClient client = newClient()) {
+            client.initialize();
+            List<McpSchema.Resource> resources = client.listResources().resources();
+
+            assertThat(resources)
+                    .extracting(McpSchema.Resource::uri)
+                    .anyMatch(uri -> uri != null && uri.startsWith("doc://"))
+                    .anyMatch(uri -> uri == null || uri.equals("openapi://spec"));
+
+            McpSchema.Resource openApi = resources.stream()
+                    .filter(r -> "openapi://spec".equals(r.uri()))
+                    .findFirst().orElseThrow();
+            assertThat(openApi.name()).contains("OpenAPI");
+            assertThat(openApi.description()).contains("OpenAPI");
+            assertThat(openApi.mimeType()).isEqualTo("application/yaml");
+        }
+    }
+
+    @Test
+    void readResourceReturnsTheOpenApiSpecVerbatim() {
+        try (McpSyncClient client = newClient()) {
+            client.initialize();
+            McpSchema.ReadResourceResult result = client.readResource(
+                    new McpSchema.ReadResourceRequest("openapi://spec"));
+
+            String yaml = textOfResources(result);
+            assertThat(yaml).contains("openapi:").contains("paths:").contains("/api/v1/orders");
+        }
+    }
+
+    @Test
+    void readResourceReturnsAMarkdownDocFile() {
+        try (McpSyncClient client = newClient()) {
+            client.initialize();
+            McpSchema.Resource doc = client.listResources().resources().stream()
+                    .filter(r -> r.uri() != null && r.uri().startsWith("doc://"))
+                    .findFirst().orElseThrow();
+
+            McpSchema.ReadResourceResult result = client.readResource(
+                    new McpSchema.ReadResourceRequest(doc.uri()));
+
+            assertThat(textOfResources(result)).isNotBlank();
+            assertThat(result.contents()).hasSize(1);
+        }
+    }
+
+    @Test
+    void listPromptsExposesSummarizeAndAskDocsTemplates() {
+        try (McpSyncClient client = newClient()) {
+            client.initialize();
+            List<McpSchema.Prompt> prompts = client.listPrompts().prompts();
+
+            assertThat(prompts)
+                    .extracting(McpSchema.Prompt::name)
+                    .containsExactlyInAnyOrder("summarize_order", "ask_docs");
+        }
+    }
+
+    @Test
+    void getPromptRendersSummarizeOrderWithTheGivenOrderId() {
+        Order order = savedOrder("mcp-prompt-test@example.com");
+
+        try (McpSyncClient client = newClient()) {
+            client.initialize();
+            McpSchema.GetPromptResult result = client.getPrompt(
+                    new McpSchema.GetPromptRequest("summarize_order",
+                            Map.of("orderId", order.getId())));
+
+            assertThat(result.description()).contains("customer-safe summary");
+            assertThat(result.messages()).hasSize(2);
+            assertThat(promptText(result))
+                    .contains(String.valueOf(order.getId()))
+                    .contains("support agent")
+                    .doesNotContain(EMAIL_MUST_NOT_LEAK);
         }
     }
     @Test
@@ -232,9 +315,33 @@ class McpServerSdkIntegrationTest {
         return text.toString();
     }
 
+    private String textOfResources(McpSchema.ReadResourceResult result) {
+        StringBuilder text = new StringBuilder();
+        for (McpSchema.ResourceContents content : result.contents()) {
+            if (content instanceof McpSchema.TextResourceContents textContent) {
+                text.append(textContent.text());
+            }
+        }
+        return text.toString();
+    }
+
+    private String promptText(McpSchema.GetPromptResult result) {
+        StringBuilder text = new StringBuilder();
+        for (McpSchema.PromptMessage message : result.messages()) {
+            if (message.content() instanceof McpSchema.TextContent textContent) {
+                text.append(textContent.text()).append('\n');
+            }
+        }
+        return text.toString();
+    }
+
     private Order savedOrder() {
+        return savedOrder(EMAIL_MUST_NOT_LEAK);
+    }
+
+    private Order savedOrder(String email) {
         Customer customer = customerRepository.saveAndFlush(
-                new Customer(EMAIL_MUST_NOT_LEAK, "MCP Leak Check"));
+                new Customer(email, "MCP Leak Check"));
         return orderRepository.saveAndFlush(
                 new Order(customer, OrderStatus.PLACED, new BigDecimal("19.99")));
     }
