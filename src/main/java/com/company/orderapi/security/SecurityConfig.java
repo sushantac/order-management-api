@@ -59,7 +59,16 @@ public class SecurityConfig {
                             .permitAll()
                             .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                             .permitAll()
+                            // PR #47: the embedded OAuth 2.1 authorization
+                            // server endpoints authenticate themselves.
+                            .requestMatchers("/oauth2/**", "/.well-known/**")
+                            .permitAll()
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                            // PR #47: /mcp is OAuth-only and scope-gated. A
+                            // token (even a valid JWT/API-key) without the mcp
+                            // scope is rejected here. Scope is decided by the
+                            // authorization server, not by the caller.
+                            .requestMatchers("/mcp").hasAuthority("SCOPE_mcp")
                             .anyRequest().authenticated())
                     .headers(headers -> headers
                             .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true))

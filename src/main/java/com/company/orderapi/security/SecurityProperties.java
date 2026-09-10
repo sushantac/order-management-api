@@ -22,6 +22,9 @@ public class SecurityProperties {
     /** Static API key accepted by the ApiKeyAuthenticationFilter. */
     private String apiKey = "dev-api-key-orderapi";
 
+    /** OAuth 2.1 authorization server settings (PR #47). */
+    private OAuth oauth = new OAuth();
+
     private Cors cors = new Cors();
 
     public boolean isEnabled() {
@@ -54,6 +57,38 @@ public class SecurityProperties {
 
     public void setCors(Cors cors) {
         this.cors = cors;
+    }
+
+    public OAuth getOauth() {
+        return oauth;
+    }
+
+    public void setOauth(OAuth oauth) {
+        this.oauth = oauth;
+    }
+
+    public static class OAuth {
+        /** Issuer URL advertised in RFC 8414 metadata + JWT {@code iss} claim. */
+        private String issuer = "http://localhost:8080";
+
+        /** Secret of the confidential in-app MCP client ({@code mcp-server}). */
+        private String mcpClientSecret = "mcp-server-secret-learning";
+
+        public String getIssuer() {
+            return issuer;
+        }
+
+        public void setIssuer(String issuer) {
+            this.issuer = issuer;
+        }
+
+        public String getMcpClientSecret() {
+            return mcpClientSecret;
+        }
+
+        public void setMcpClientSecret(String mcpClientSecret) {
+            this.mcpClientSecret = mcpClientSecret;
+        }
     }
 
     public static class Cors {
