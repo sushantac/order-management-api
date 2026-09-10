@@ -312,6 +312,15 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- PR #45 - StepVerifier for asserting on reactive Flux streams in tests.
+             reactor-core itself comes transitively from Spring AI (ChatModel.stream
+             returns Flux), but the test-support module is a test-only extra. -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- PR #26 - test support for Spring Security (@WithMockJwt etc.). -->
         <dependency>
             <groupId>org.springframework.security</groupId>

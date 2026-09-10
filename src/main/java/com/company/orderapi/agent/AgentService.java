@@ -11,6 +11,7 @@ import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 import java.util.UUID;
@@ -95,5 +96,42 @@ public class AgentService {
         log.debug("agent: conversation={}, task='{}', answer length={}",
                 effectiveConversationId, task, answer == null ? 0 : answer.length());
         return answer;
+    }
+
+    /**
+     * Asks the agent to perform a task, streaming the response token by token.
+     *
+     * <p>The returned {@link Flux} emits:
+     * <ul>
+     *   <li>Token strings as the LLM generates them (tool calls execute
+     *       synchronously between tokens)</li>
+     *   <li>An empty string as the completion signal (the controller maps this
+     *       to a {@code done} SSE event)</li>
+     * </ul>
+     *
+     * @param task           a natural-language task or question
+     * @param conversationId a stable id that groups turns into one conversation, or
+     *                       {@code null}/{@code ""} for a stateless question
+     * @return a Flux of token strings
+     */
+    public Flux<String> askStream(String task, String conversationId) {
+        if (task == null || task.isBlank()) {
+            return Flux.error(new IllegalArgumentException("task must not be blank"));
+        }
+        String effectiveConversationId = (conversationId == null || conversationId.isBlank())
+                ? UUID.randomUUID().toString()
+                : conversationId.trim();
+
+        log.debug("agent stream: conversation={}, task='{}'", effectiveConversationId, task);
+
+        return chatClient.prompt()
+                .advisors(spec -> spec.param(ChatMemory.CONVERSATION_ID, effectiveConversationId))
+                .user(task)
+                .stream()
+                .content()  // Flux<String> — raw tokens as they arrive
+                .filter(text -> text != null && !text.isEmpty())
+                .concatWith(Flux.just(""))  // completion signal
+                .doOnComplete(() -> log.debug("agent stream complete: conversation={}, task='{}'",
+                        effectiveConversationId, task));
     }
 }
