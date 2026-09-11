@@ -5,8 +5,8 @@ pull request at a time, each PR teaching one concrete aspect of modern Java 21 /
 Spring Boot API development (JPA mappings, cascading, fetch strategies, locking,
 auditing, security, event-driven, Kubernetes, ...).
 
-> **Status: 🎉 All 35 learning PRs + bonus PRs #36 (MCP server), #37 (official MCP Spring SDK, Boot 3.4), #38 (RAG — `docs_search`), #39 (agentic tool-calling — `agentic_ask`), #40 (chat memory — multi-turn `agentic_ask`), #41 (guarded write — `cancel_order`), #42 (RAG productionization — pgvector + re-index + retrieval eval), #43 (hybrid retrieval — dense + Postgres full-text, RRF + MMR), #44 (RAG eval gate, earned — real-model measurement, MMR off, gate 0.7), #45 (streaming SSE — token-by-token), #46 (MCP resources & prompts — read the docs corpus, fetch templates), #47 (MCP authorization — OAuth 2.1 + PKCE on `/mcp`), #48 (MCP session-scoped authorization + agent-identity audit), #49 (AI observability — metrics, traces, logs), #50 (guarded write expanded — confirm/ship) merged to `develop` — journey continues (current suite: 214 tests, 0 failures).**
-> See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence (plus the #36–#50 AI bonuses).
+> **Status: 🎉 All 35 learning PRs + bonus PRs #36 (MCP server), #37 (official MCP Spring SDK, Boot 3.4), #38 (RAG — `docs_search`), #39 (agentic tool-calling — `agentic_ask`), #40 (chat memory — multi-turn `agentic_ask`), #41 (guarded write — `cancel_order`), #42 (RAG productionization — pgvector + re-index + retrieval eval), #43 (hybrid retrieval — dense + Postgres full-text, RRF + MMR), #44 (RAG eval gate, earned — real-model measurement, MMR off, gate 0.7), #45 (streaming SSE — token-by-token), #46 (MCP resources & prompts — read the docs corpus, fetch templates), #47 (MCP authorization — OAuth 2.1 + PKCE on `/mcp`), #48 (MCP session-scoped authorization + agent-identity audit), #49 (AI observability — metrics, traces, logs), #50 (guarded write expanded — confirm/ship), #51 (reranking & query rewriting) merged to `develop` — journey continues (current suite: 214 tests, 0 failures).**
+> See [Learning Roadmap](#learning-roadmap) for the full 35-PR sequence (plus the #36–#51 AI bonuses).
 >
 > 📚 **Study guides:** [Learning document](docs/learnings/README.md) (concepts → real code)
 > · [Interview cheat sheets](docs/interview-cheat-sheets/README.md) (rapid revision pack)
@@ -1798,7 +1798,7 @@ artifact is the measured table:
 | 45 (bonus) | Streaming (SSE) — SseEmitter + virtual threads | 46 (bonus) | MCP resources & prompts — read the docs corpus, fetch safe templates |
 | 47 (bonus) | MCP authorization — OAuth 2.1 + PKCE, own AS+RS on `/mcp` | 48 (bonus) | MCP session-scoped authorization + agent-identity audit |
 | 49 (bonus) | AI-feature observability — metrics, traces, logs | 50 (bonus) | Guarded write expanded — confirm/ship (+ fix app.yml topics) |
-| 51 (next, bonus) | Semantic reranking & query rewriting | 52 (bonus) | Multi-agent protocol (A2A) |
+| 51 (bonus) | Semantic reranking & query rewriting | 52 (next, bonus) | Multi-agent protocol (A2A) |
 
 ---
 
