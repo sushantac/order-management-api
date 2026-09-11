@@ -46,3 +46,7 @@ management:
   # PR #32 - production ships traces to the OTLP/Jaeger collector.
   tracing:
     enabled: true
+  otlp:
+    metrics:
+      export:
+        interval: 10s

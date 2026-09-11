@@ -44,12 +44,22 @@ public class RagService {
     private final RetrievalEngine retrievalEngine;
     private final ChatModel chatModel;
     private final RagProperties ragProperties;
+    private final com.company.orderapi.observability.AiMetrics aiMetrics;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public RagService(RetrievalEngine retrievalEngine, @Lazy ChatModel chatModel,
-                      RagProperties ragProperties) {
+                      RagProperties ragProperties,
+                      com.company.orderapi.observability.AiMetrics aiMetrics) {
         this.retrievalEngine = retrievalEngine;
         this.chatModel = chatModel;
         this.ragProperties = ragProperties;
+        this.aiMetrics = aiMetrics;
+    }
+
+    // Test-only constructor (no metrics)
+    public RagService(RetrievalEngine retrievalEngine, ChatModel chatModel,
+                      RagProperties ragProperties) {
+        this(retrievalEngine, chatModel, ragProperties, null);
     }
 
     /**
@@ -59,29 +69,42 @@ public class RagService {
      * @return the answer text with source attribution
      */
     public String answer(String question) {
-        List<Document> relevantDocs = retrievalEngine.retrieve(question, ragProperties.topK());
+        long start = System.nanoTime();
+        String status = com.company.orderapi.observability.AiMetrics.STATUS_SUCCESS;
+        int chunks = 0;
+        try {
+            List<Document> relevantDocs = retrievalEngine.retrieve(question, ragProperties.topK());
+            chunks = relevantDocs.size();
+            if (relevantDocs.isEmpty()) {
+                return "No relevant documentation found for your question. "
+                        + "The documentation index may not be loaded yet.";
+            }
 
-        if (relevantDocs.isEmpty()) {
-            return "No relevant documentation found for your question. "
-                    + "The documentation index may not be loaded yet.";
+            String context = relevantDocs.stream()
+                    .map(doc -> {
+                        String source = String.valueOf(doc.getMetadata().getOrDefault("source", "unknown"));
+                        return "[Source: " + source + "]\n" + doc.getText();
+                    })
+                    .collect(Collectors.joining("\n\n---\n\n"));
+
+            String systemMessageText = SYSTEM_PROMPT.formatted(context);
+            Prompt prompt = new Prompt(List.of(
+                    new SystemMessage(systemMessageText),
+                    new UserMessage(question)));
+
+            String answer = chatModel.call(prompt).getResult().getOutput().getText();
+            log.debug("RAG: question='{}', chunks={}, answer length={}",
+                    question, relevantDocs.size(), answer.length());
+            return answer;
+        } catch (RuntimeException e) {
+            status = com.company.orderapi.observability.AiMetrics.STATUS_ERROR;
+            throw e;
+        } finally {
+            if (aiMetrics != null) {
+                aiMetrics.recordRagQuery(ragProperties.retrievalMode() != null ? ragProperties.retrievalMode().toString() : "dense",
+                        status, System.nanoTime() - start, chunks);
+            }
         }
-
-        String context = relevantDocs.stream()
-                .map(doc -> {
-                    String source = String.valueOf(doc.getMetadata().getOrDefault("source", "unknown"));
-                    return "[Source: " + source + "]\n" + doc.getText();
-                })
-                .collect(Collectors.joining("\n\n---\n\n"));
-
-        String systemMessageText = SYSTEM_PROMPT.formatted(context);
-        Prompt prompt = new Prompt(List.of(
-                new SystemMessage(systemMessageText),
-                new UserMessage(question)));
-
-        String answer = chatModel.call(prompt).getResult().getOutput().getText();
-        log.debug("RAG: question='{}', chunks={}, answer length={}",
-                question, relevantDocs.size(), answer.length());
-        return answer;
     }
 
     /**
