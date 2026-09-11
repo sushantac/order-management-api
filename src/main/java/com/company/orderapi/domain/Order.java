@@ -159,6 +159,29 @@ public class Order extends BaseEntity {
         this.status = OrderStatus.CANCELLED;
     }
 
+    /**
+     * PR #50 - PLACED -> CONFIRMED. Only a placed order can be confirmed;
+     * confirming an already-confirmed/shipped/delivered/cancelled order is an error.
+     */
+    public void confirm() {
+        if (status != OrderStatus.PLACED) {
+            throw new IllegalStateException(
+                    "Order " + getId() + " can only be confirmed from PLACED, currently " + status + ".");
+        }
+        this.status = OrderStatus.CONFIRMED;
+    }
+
+    /**
+     * PR #50 - CONFIRMED -> SHIPPED. Only a confirmed order can be shipped.
+     */
+    public void ship() {
+        if (status != OrderStatus.CONFIRMED) {
+            throw new IllegalStateException(
+                    "Order " + getId() + " can only be shipped from CONFIRMED, currently " + status + ".");
+        }
+        this.status = OrderStatus.SHIPPED;
+    }
+
     public BigDecimal getTotalAmount() {
         return totalAmount;
     }
