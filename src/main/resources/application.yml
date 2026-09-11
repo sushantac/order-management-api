@@ -1,74 +1,253 @@
+# ============================================================================
+# PR #2 - Database wiring (PostgreSQL + Liquibase).
+# ----------------------------------------------------------------------------
+# PR #1 deliberately excluded DB auto-configuration. PR #2 introduces the real
+# schema and therefore removes those exclusions:
+#   - docker-compose.yml runs PostgreSQL 16 locally.
+#   - Liquibase owns the schema (db/changelog/db.changelog-master.xml);
+#     Hibernate never creates or updates it (ddl-auto: validate).
+# Every value is overridable via environment variables so the same file works
+# for local dev (docker-compose), integration tests (Testcontainers) and CI.
+# ============================================================================
 spring:
   application:
     name: order-management-api
 
+  # PR #33 - how long in-flight requests may run after graceful shutdown starts.
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+  # PR #30 - serve requests on Java 21 VIRTUAL threads instead of platform
+  # threads: the container can hold far more concurrent connections because
+  # each request costs only a small stack instead of a full OS thread.
+  threads:
+    virtual:
+      enabled: true
+
+  # --- PostgreSQL connection (dev defaults match docker-compose.yml) --------
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRES_DB:ecommerce}?currentSchema=orders
-    username: ${DB_USERNAME:ecommerce}
-    password: ${DB_PASSWORD:secret}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:orderdb}
+    username: ${DB_USER:order}
+    password: ${DB_PASSWORD:order}
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
+      pool-name: OrderApiHikariPool
+      maximum-pool-size: 10
 
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    properties:
-      hibernate:
-        default_schema: orders
-        format_sql: true
-
+  # --- Schema versioning with Liquibase --------------------------------------
   liquibase:
     enabled: true
     change-log: classpath:db/changelog/db.changelog-master.xml
-    default-schema: orders
 
+  jpa:
+    open-in-view: false
+    # PR #15 - show every JPA query in the logs (see logging levels below).
+    show-sql: true
+    hibernate:
+      # Liquibase owns the schema. 'validate' only confirms the JPA entities
+      # match the DB - it never modifies anything.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        # Pretty-print the SQL so it is actually readable.
+        format_sql: true
+        # PR #15 - comment each statement with the code path that generated it.
+        use_sql_comments: true
+        # PR #15 - session/query statistics (also used by the tests).
+        generate_statistics: true
+        # PR #7 - batch fetching knobs.
+        # default_batch_fetch_size: when a lazy collection/many-to-one IS loaded,
+        # Hibernate loads up to this many owners in ONE "in (...)" query instead
+        # of firing one query per owner (kills most N+1 without any JPQL).
+        default_batch_fetch_size: 20
+        # jdbc.fetch_size: rows streamed from the DB per round-trip (ResultSet
+        # fetch size). Helps large result sets, independent of batch fetching.
+        jdbc:
+          fetch_size: 100
+        # PR #16 - second-level cache (JCache + Ehcache). Only entities marked
+        # @Cacheable (selective mode) are cached.
+        cache:
+          use_second_level_cache: true
+          region:
+            factory_class: jcache
+        # PR #30 - pin the JSR-107 provider to Ehcache: Redisson also ships a
+        # JCache provider on the classpath, and an ambiguous CachingProvider
+        # lookup would fail Hibernate's session-factory startup.
+        javax:
+          cache:
+            provider: org.ehcache.jsr107.EhcacheCachingProvider
+        jakarta.persistence.sharedCache.mode: ENABLE_SELECTIVE
+
+  # --- PR #28: application-level cache ----------------------------------------
+  # Default = 'simple' (ConcurrentHashMap): zero-infrastructure caching for the
+  # unit/integration test contexts. Redis is the real store and is activated by
+  # the dev/prod profiles (or SPRING_CACHE_TYPE=redis) - see those files.
+  cache:
+    type: simple
+
+  # --- Redis connection (used by the PR #28 cache and the PR #30 Redisson
+  # distributed lock). Defaults match the docker-compose redis service; only
+  # contexts that actually reach Redis pay any connection cost.
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  # --- PR #31: Kafka event bus ----------------------------------------------
+  # Nothing CONNECTS unless app.kafka.enabled=true (dev/prod; integration
+  # tests override both), keeping non-Kafka test contexts broker-free.
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
-      group-id: order-api
+      group-id: order-service
       auto-offset-reset: earliest
+      enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "com.company.orderapi.messaging,com.ecommerce.*"
+        spring.json.trusted.packages: com.company.orderapi.*
+    listener:
+      # MANUAL: the listener acknowledges AFTER it finished processing the
+      # message (see OrderEventConsumer) - explicit offset control.
+      ack-mode: manual
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          secret: ${JWT_SECRET:dev-secret-change-me-please-at-least-32chars-long-123}
-
-  lifecycle:
-    timeout-per-shutdown-phase: 20s
+  # --- RAG: Spring AI (DeepSeek chat + Ollama embeddings) --------------------
+  # DeepSeek handles answer generation; Ollama (local, free) handles embeddings.
+  # Activate with --spring.profiles.active=rag (see application-rag.yml).
+  ai:
+    deepseek:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      chat:
+        model: deepseek-v4-flash
+        temperature: 0.3
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      embedding:
+        model: nomic-embed-text
+        enabled: true
 
 server:
-  port: 8084
+  # SERVER_PORT env var overridable - useful for tests / running multiple instances.
+  port: ${SERVER_PORT:8080}
+  # PR #33 - graceful shutdown: stop accepting new work, let in-flight
+  # requests finish up to the timeout below (spring.lifecycle.timeout...).
   shutdown: graceful
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        # PR #32 - prometheus endpoint added for scraping (Prometheus/AlertManager).
+        include: health, info, metrics, prometheus
   endpoint:
     health:
+      # Detailed health is handy in dev; restrict before production (later PR).
       show-details: always
-    probes:
-      enabled: true
+      # PR #33 - expose /actuator/health/liveness and /actuator/health/readiness
+      # for the Kubernetes probes.
+      probes:
+        enabled: true
+  # PR #32 - OpenTelemetry tracing. Disabled by default so ordinary contexts
+  # never start an exporter; dev/prod profiles enable it (docker-compose Jaeger).
   tracing:
+    enabled: false
     sampling:
-      probability: 1.0
+      probability: 0.1
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}
 
+info:
+  app:
+    name: ${spring.application.name}
+    description: Production-grade order management API - one PR at a time.
+
+logging:
+  level:
+    root: INFO
+    # Our own classes log at DEBUG during the learning journey.
+    com.company.orderapi: DEBUG
+    # PR #15 - SQL debugging: statement + pretty print, parameter bindings,
+    # and session statistics. See application-prod.yml (all disabled there).
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.stat: DEBUG
+
+# --- PR #26: security -------------------------------------------------------
 app:
-  internal:
-    api-key: ${INTERNAL_API_KEY:internal-service-key-12345}
+  security:
+    # Master switch (kept off by non-security integration tests).
+    enabled: true
+    # HS256 signing secret for the LEARNING journey (>= 32 chars). Production
+    # validates against the authorization server's published JWK set instead.
+    jwt-secret: local-learning-secret-change-me-please-32chars
+    # Simple API-key fallback for scripts/machine clients (PR #26).
+    api-key: dev-api-key-orderapi
+    cors:
+      allowed-origins:
+        - http://localhost:3000
   kafka:
+    # Master switch: brokers are only contacted when this is true.
+    enabled: false
     topics:
+      order-events: order-events
+      order-events-dlt: order-events.DLT
       cart-checkout: cart.checkout.initiated
+      cart-checkout-initiated: cart.checkout.initiated
       order-placed: order.placed
       order-status-changed: order.status.changed
       legacy-order-events: order-events
+  outbox:
+    poll-millis: 2000
+    batch-size: 50
+    scheduler-enabled: true
+  features:
+    # PR #34 - feature flags (FeatureFlags bean). Override per environment.
+    csv-export: true
+    reporting: false
+
+# --- PR #29: resilience (Resilience4j) --------------------------------------
+# Patterns configured via properties so a change never needs a redeploy:
+#   1. circuit breaker on the payment gateway (open after too many failures /
+#      slow calls, half-open probes, then closed again),
+#   2. retry with EXPONENTIAL backoff (200ms, 400ms, ...) inside the breaker,
+#   3. thread-pool bulkhead isolating gateway calls from the DB thread pool,
+#   4. rate limiter per API-key client (see ApiKeyRateLimiterFilter).
+resilience4j:
+  circuitbreaker:
+    instances:
+      paymentGateway:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 2s
+        slow-call-rate-threshold: 50
+        wait-duration-in-open-state: 5s
+        permitted-number-of-calls-in-half-open-state: 2
+  retry:
+    instances:
+      paymentGateway:
+        max-attempts: 3
+        wait-duration: 200ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - com.company.orderapi.domain.service.PaymentFailedException
+  ratelimiter:
+    instances:
+      apiKey:
+        # Generous default; per-key buckets are demonstrated/tested with a
+        # smaller override in RateLimitIntegrationTest.
+        limit-for-period: 1000
+        limit-refresh-period: 1m
+        timeout-duration: 0s
+  thread-pool-bulkhead:
+    instances:
+      paymentGateway:
+        core-thread-pool-size: 1
+        max-thread-pool-size: 2
+        queue-capacity: 5
+        keep-alive-duration: 1m

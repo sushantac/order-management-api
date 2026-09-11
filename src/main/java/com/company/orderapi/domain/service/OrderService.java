@@ -208,4 +208,38 @@ public class OrderService {
         order.cancel();
         return orders.save(order);
     }
+
+    @Transactional
+    @PreAuthorize("@securityProperties.enabled == false or hasAnyAuthority('SCOPE_order_write', 'ROLE_API_KEY')")
+    @Timed(value = "order.confirm", description = "Time to confirm an order",
+            percentiles = 0.95)
+    public Order confirmOrder(Long orderId) {
+        Order order = orders.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown order id " + orderId + "."));
+        order.confirm();
+        Order saved = orders.save(order);
+        OrderStatusChangedMessage msg = new OrderStatusChangedMessage(
+                UUID.randomUUID().toString(), saved.getId(), saved.getOrderNumber(),
+                OrderStatus.PLACED.name(), OrderStatus.CONFIRMED.name(), LocalDateTime.now());
+        outbox.saveAndFlush(OutboxEntry.pending("Order", String.valueOf(saved.getId()),
+                "OrderStatusChangedMessage", writeJson(msg)));
+        return saved;
+    }
+
+    @Transactional
+    @PreAuthorize("@securityProperties.enabled == false or hasAnyAuthority('SCOPE_order_write', 'ROLE_API_KEY')")
+    @Timed(value = "order.ship", description = "Time to ship an order",
+            percentiles = 0.95)
+    public Order shipOrder(Long orderId) {
+        Order order = orders.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown order id " + orderId + "."));
+        order.ship();
+        Order saved = orders.save(order);
+        OrderStatusChangedMessage msg = new OrderStatusChangedMessage(
+                UUID.randomUUID().toString(), saved.getId(), saved.getOrderNumber(),
+                OrderStatus.CONFIRMED.name(), OrderStatus.SHIPPED.name(), LocalDateTime.now());
+        outbox.saveAndFlush(OutboxEntry.pending("Order", String.valueOf(saved.getId()),
+                "OrderStatusChangedMessage", writeJson(msg)));
+        return saved;
+    }
 }
