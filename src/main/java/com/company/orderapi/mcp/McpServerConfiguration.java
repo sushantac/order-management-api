@@ -9,11 +9,18 @@ import io.modelcontextprotocol.server.transport.WebMvcStatelessServerTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.servlet.function.RouterFunction;
+import org.springframework.web.servlet.function.ServerRequest;
 import org.springframework.web.servlet.function.ServerResponse;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+
+import static java.util.Collections.singletonMap;
 
 /**
  * PR #37 - official MCP server wiring (Model Context Protocol Java SDK,
@@ -40,9 +47,11 @@ import java.util.List;
  * read-only. Enabling {@code app.mcp.write-tool.enabled=true} is an explicit,
  * reviewable operational decision.
  *
- * <p>Authentication is NOT handled here: {@code /mcp} sits behind the same
- * Spring Security chain as every other endpoint, so MCP callers need a valid
- * bearer token / API key in production (see {@code SecurityConfig}).
+ * <p>PR #48: Authentication is handled via a custom {@code contextExtractor}
+ * that captures the Spring Security {@link Authentication} and stores the
+ * OAuth client_id (from JWT {@code client_id} or {@code sub} claim) in the
+ * {@link io.modelcontextprotocol.common.McpTransportContext} so tool handlers
+ * can perform session-scoped authorization and audit.
  */
 @Configuration(proxyBeanMethods = false)
 public class McpServerConfiguration {
@@ -50,11 +59,36 @@ public class McpServerConfiguration {
     private static final String MCP_ENDPOINT = "/mcp";
 
     @Bean
-    public WebMvcStatelessServerTransport mcpTransport(ObjectMapper objectMapper) {
+    public WebMvcStatelessServerTransport mcpTransport(ObjectMapper objectMapper,
+            McpAuditService auditService) {
         return WebMvcStatelessServerTransport.builder()
                 .messageEndpoint(MCP_ENDPOINT)
                 .jsonMapper(new JacksonMcpJsonMapper(objectMapper))
+                .contextExtractor(this::extractSecurityContext)
                 .build();
+    }
+
+    /**
+     * Extracts the OAuth principal from the current Spring Security context and
+     * stores it in the MCP transport context map under keys:
+     * <ul>
+     *   <li>{@code mcp_actor} - OAuth client_id (from JWT {@code client_id} or {@code sub} claim)</li>
+     *   <li>{@code mcp_session_id} - transport session identifier (if available)</li>
+     * </ul>
+     * Falls back to {@code "anonymous"} when no authentication is present.
+     */
+    private io.modelcontextprotocol.common.McpTransportContext extractSecurityContext(
+            ServerRequest request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String actor = "anonymous";
+        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+            actor = jwt.getClaimAsString("client_id");
+            if (actor == null || actor.isBlank()) {
+                actor = jwt.getSubject();
+            }
+        }
+        Map<String, Object> ctx = singletonMap("mcp_actor", actor);
+        return io.modelcontextprotocol.common.McpTransportContext.create(ctx);
     }
 
     @Bean
@@ -68,16 +102,17 @@ public class McpServerConfiguration {
             List<AbstractMcpReadOnlyTool> readTools,
             List<AbstractMcpWriteTool> writeTools,
             McpDocsResourceCatalog docsCatalog,
-            List<AbstractMcpPrompt> prompts) {
+            List<AbstractMcpPrompt> prompts,
+            McpAuditService auditService) {
 
         List<McpStatelessServerFeatures.SyncToolSpecification> specifications = new java.util.ArrayList<>();
         readTools.stream()
                 .sorted(Comparator.comparing(AbstractMcpReadOnlyTool::name))
-                .map(AbstractMcpReadOnlyTool::specification)
+                .map(t -> t.specification(auditService))
                 .forEach(specifications::add);
         writeTools.stream()
                 .sorted(Comparator.comparing(AbstractMcpWriteTool::name))
-                .map(AbstractMcpWriteTool::specification)
+                .map(t -> t.specification(auditService))
                 .forEach(specifications::add);
 
         return McpServer.sync(transport)

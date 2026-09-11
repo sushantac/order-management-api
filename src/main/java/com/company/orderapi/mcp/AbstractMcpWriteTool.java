@@ -1,5 +1,6 @@
 package com.company.orderapi.mcp;
 
+import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
@@ -26,11 +27,15 @@ import java.util.Map;
  *   <li>describe itself as MUTATING data in its description, so a model-assisted
  *       caller knows the consequence before calling;</li>
  *   <li>require an explicit per-call confirmation argument
- *       ({@code confirmed=true}) in its JSON Schema;</li>
+ *       {@code confirmed=true} in its JSON Schema;</li>
  *   <li>delegate the actual mutation to a service method that carries its own
  *       {@code @PreAuthorize} scope check and domain rules (never to a bare
  *       repository save).</li>
  * </ul>
+ *
+ * <p>PR #48: tool invocations are audited via {@link McpAuditService}. The
+ * {@code specification(McpAuditService)} overload wraps the call handler to
+ * record the actor, session_id, tool name, arguments, and success/error outcome.
  */
 public abstract class AbstractMcpWriteTool {
 
@@ -53,6 +58,17 @@ public abstract class AbstractMcpWriteTool {
 
     /** Builds the official SDK tool specification from this tool's contract. */
     public final McpStatelessServerFeatures.SyncToolSpecification specification() {
+        return specification(null);
+    }
+
+    /**
+     * Builds the tool specification with audit recording enabled.
+     *
+     * @param auditService the audit service to record tool invocations; if null,
+     *                     no audit entry is written (backward compatible)
+     */
+    public final McpStatelessServerFeatures.SyncToolSpecification specification(
+            McpAuditService auditService) {
         Tool tool = Tool.builder()
                 .name(name())
                 .description(description())
@@ -61,14 +77,35 @@ public abstract class AbstractMcpWriteTool {
         return McpStatelessServerFeatures.SyncToolSpecification.builder()
                 .tool(tool)
                 .callHandler((transportContext, request) -> {
+                    String sessionId = extractSessionId(transportContext);
+                    String actor = extractActor(transportContext);
+                    Object rawArgs = request.arguments();
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> arguments = (rawArgs instanceof Map) ? (Map<String, Object>) rawArgs : Map.of();
                     try {
-                        return new CallToolResult(execute(request.arguments()), false);
+                        String result = execute(arguments);
+                        if (auditService != null) {
+                            auditService.record(sessionId, actor, name(), arguments, true, null);
+                        }
+                        return new CallToolResult(result, false);
                     } catch (IllegalArgumentException e) {
                         String message = e.getMessage() == null ? "Tool failed." : e.getMessage();
+                        if (auditService != null) {
+                            auditService.record(sessionId, actor, name(), arguments, false, message);
+                        }
                         return new CallToolResult(message, true);
                     }
                 })
                 .build();
+    }
+
+    private static String extractActor(McpTransportContext ctx) {
+        return (String) ctx.get("mcp_actor");
+    }
+
+    private static String extractSessionId(McpTransportContext ctx) {
+        Object sid = ctx.get("mcp_session_id");
+        return sid != null ? sid.toString() : "unknown";
     }
 
     /** Programmatic invocation of the tool (used by the MCP call handler). */
