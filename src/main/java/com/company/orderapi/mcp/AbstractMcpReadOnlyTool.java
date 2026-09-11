@@ -49,7 +49,7 @@ public abstract class AbstractMcpReadOnlyTool {
 
     /** Builds the official SDK tool specification from this tool's contract. */
     public final McpStatelessServerFeatures.SyncToolSpecification specification() {
-        return specification(null);
+        return specification(null, null);
     }
 
     /**
@@ -61,6 +61,12 @@ public abstract class AbstractMcpReadOnlyTool {
      */
     public final McpStatelessServerFeatures.SyncToolSpecification specification(
             McpAuditService auditService) {
+        return specification(auditService, null);
+    }
+
+    public final McpStatelessServerFeatures.SyncToolSpecification specification(
+            McpAuditService auditService,
+            com.company.orderapi.observability.AiMetrics aiMetrics) {
         Tool tool = Tool.builder()
                 .name(name())
                 .description(description())
@@ -69,6 +75,7 @@ public abstract class AbstractMcpReadOnlyTool {
         return McpStatelessServerFeatures.SyncToolSpecification.builder()
                 .tool(tool)
                 .callHandler((transportContext, request) -> {
+                    long start = System.nanoTime();
                     String sessionId = extractSessionId(transportContext);
                     String actor = extractActor(transportContext);
                     Object rawArgs = request.arguments();
@@ -79,11 +86,17 @@ public abstract class AbstractMcpReadOnlyTool {
                         if (auditService != null) {
                             auditService.record(sessionId, actor, name(), arguments, true, null);
                         }
+                        if (aiMetrics != null) {
+                            aiMetrics.recordToolCall(name(), com.company.orderapi.observability.AiMetrics.STATUS_SUCCESS, System.nanoTime() - start);
+                        }
                         return new CallToolResult(result, false);
                     } catch (IllegalArgumentException e) {
                         String message = e.getMessage() == null ? "Tool failed." : e.getMessage();
                         if (auditService != null) {
                             auditService.record(sessionId, actor, name(), arguments, false, message);
+                        }
+                        if (aiMetrics != null) {
+                            aiMetrics.recordToolCall(name(), com.company.orderapi.observability.AiMetrics.STATUS_ERROR, System.nanoTime() - start);
                         }
                         return new CallToolResult(message, true);
                     }

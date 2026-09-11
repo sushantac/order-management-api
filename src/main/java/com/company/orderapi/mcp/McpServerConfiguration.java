@@ -59,8 +59,7 @@ public class McpServerConfiguration {
     private static final String MCP_ENDPOINT = "/mcp";
 
     @Bean
-    public WebMvcStatelessServerTransport mcpTransport(ObjectMapper objectMapper,
-            McpAuditService auditService) {
+    public WebMvcStatelessServerTransport mcpTransport(ObjectMapper objectMapper) {
         return WebMvcStatelessServerTransport.builder()
                 .messageEndpoint(MCP_ENDPOINT)
                 .jsonMapper(new JacksonMcpJsonMapper(objectMapper))
@@ -103,16 +102,17 @@ public class McpServerConfiguration {
             List<AbstractMcpWriteTool> writeTools,
             McpDocsResourceCatalog docsCatalog,
             List<AbstractMcpPrompt> prompts,
-            McpAuditService auditService) {
+            McpAuditService auditService,
+            com.company.orderapi.observability.AiMetrics aiMetrics) {
 
         List<McpStatelessServerFeatures.SyncToolSpecification> specifications = new java.util.ArrayList<>();
         readTools.stream()
                 .sorted(Comparator.comparing(AbstractMcpReadOnlyTool::name))
-                .map(t -> t.specification(auditService))
+                .map(t -> t.specification(auditService, aiMetrics))
                 .forEach(specifications::add);
         writeTools.stream()
                 .sorted(Comparator.comparing(AbstractMcpWriteTool::name))
-                .map(t -> t.specification(auditService))
+                .map(t -> t.specification(auditService, aiMetrics))
                 .forEach(specifications::add);
 
         return McpServer.sync(transport)
