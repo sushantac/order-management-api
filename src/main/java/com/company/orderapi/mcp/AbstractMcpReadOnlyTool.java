@@ -1,5 +1,6 @@
 package com.company.orderapi.mcp;
 
+import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
@@ -22,6 +23,10 @@ import java.util.Map;
  * <p>By contract every tool here is read-only and PII-free (implemented by the
  * subclasses). A tool failure is reported as an MCP tool error ({@code isError}
  * = true) with a human message, never as an uncaught exception.
+ *
+ * <p>PR #48: tool invocations are audited via {@link McpAuditService}. The
+ * {@code specification(McpAuditService)} overload wraps the call handler to
+ * record the actor, session_id, tool name, arguments, and success/error outcome.
  */
 public abstract class AbstractMcpReadOnlyTool {
 
@@ -44,6 +49,18 @@ public abstract class AbstractMcpReadOnlyTool {
 
     /** Builds the official SDK tool specification from this tool's contract. */
     public final McpStatelessServerFeatures.SyncToolSpecification specification() {
+        return specification(null);
+    }
+
+    /**
+     * Builds the tool specification with audit recording enabled.
+     *
+     * @param auditService the audit service to record tool invocations; if null,
+     *                     no audit entry is written (backward compatible with
+     *                     direct {@code execute()} calls from the agent surface)
+     */
+    public final McpStatelessServerFeatures.SyncToolSpecification specification(
+            McpAuditService auditService) {
         Tool tool = Tool.builder()
                 .name(name())
                 .description(description())
@@ -52,14 +69,35 @@ public abstract class AbstractMcpReadOnlyTool {
         return McpStatelessServerFeatures.SyncToolSpecification.builder()
                 .tool(tool)
                 .callHandler((transportContext, request) -> {
+                    String sessionId = extractSessionId(transportContext);
+                    String actor = extractActor(transportContext);
+                    Object rawArgs = request.arguments();
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> arguments = (rawArgs instanceof Map) ? (Map<String, Object>) rawArgs : Map.of();
                     try {
-                        return new CallToolResult(execute(request.arguments()), false);
+                        String result = execute(arguments);
+                        if (auditService != null) {
+                            auditService.record(sessionId, actor, name(), arguments, true, null);
+                        }
+                        return new CallToolResult(result, false);
                     } catch (IllegalArgumentException e) {
                         String message = e.getMessage() == null ? "Tool failed." : e.getMessage();
+                        if (auditService != null) {
+                            auditService.record(sessionId, actor, name(), arguments, false, message);
+                        }
                         return new CallToolResult(message, true);
                     }
                 })
                 .build();
+    }
+
+    private static String extractActor(McpTransportContext ctx) {
+        return (String) ctx.get("mcp_actor");
+    }
+
+    private static String extractSessionId(McpTransportContext ctx) {
+        Object sid = ctx.get("mcp_session_id");
+        return sid != null ? sid.toString() : "unknown";
     }
 
     /**

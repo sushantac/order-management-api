@@ -15,6 +15,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
@@ -29,6 +30,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,6 +43,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * is ON here: every /mcp call must present an OAuth access token. Tokens are
  * minted against the REAL token endpoint via the confidential
  * {@code client_credentials} flow.
+ *
+ * <p>PR #48: also verifies MCP tool invocation audit trail is recorded.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
@@ -67,6 +71,9 @@ class McpOAuth2IntegrationTest {
 
     @Autowired
     private RegisteredClientRepository clientRepository;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     @Test
     void clientCredentialsTokenGrantsMcpAccess() throws Exception {
@@ -143,6 +150,52 @@ class McpOAuth2IntegrationTest {
         assertThat(console.getClientAuthenticationMethods())
                 .doesNotContain(ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
         assertThat(console.getClientSettings().isRequireProofKey()).isTrue();
+    }
+
+    // --- PR #48: MCP tool audit tests ---------------------------------------
+
+    @Test
+    void toolInvocationCreatesAuditTrail() throws Exception {
+        String accessToken = clientCredentialsToken("mcp-server", "mcp");
+
+        try (McpSyncClient client = clientWithBearer(accessToken)) {
+            client.initialize();
+            client.callTool(new McpSchema.CallToolRequest("api_health", Map.of()));
+        }
+
+        // Verify audit entry was created
+        List<Map<String, Object>> audits = jdbc.queryForList(
+                "SELECT session_id, actor, tool_name, arguments_json, success, error_message " +
+                "FROM mcp_tool_audit WHERE tool_name = 'api_health' ORDER BY occurred_at DESC LIMIT 1");
+
+        assertThat(audits).hasSize(1);
+        Map<String, Object> audit = audits.get(0);
+        assertThat(audit.get("actor")).isEqualTo("mcp-server");
+        assertThat(audit.get("tool_name")).isEqualTo("api_health");
+        assertThat(audit.get("success")).isEqualTo(true);
+        assertThat(audit.get("error_message")).isNull();
+    }
+
+    @Test
+    void failedToolInvocationRecordsError() throws Exception {
+        String accessToken = clientCredentialsToken("mcp-server", "mcp");
+
+        try (McpSyncClient client = clientWithBearer(accessToken)) {
+            client.initialize();
+            // Call a tool with invalid arguments to trigger failure
+            client.callTool(new McpSchema.CallToolRequest("order_status", Map.of("orderId", -1L)));
+        }
+
+        List<Map<String, Object>> audits = jdbc.queryForList(
+                "SELECT session_id, actor, tool_name, arguments_json, success, error_message " +
+                "FROM mcp_tool_audit WHERE tool_name = 'order_status' ORDER BY occurred_at DESC LIMIT 1");
+
+        assertThat(audits).hasSize(1);
+        Map<String, Object> audit = audits.get(0);
+        assertThat(audit.get("actor")).isEqualTo("mcp-server");
+        assertThat(audit.get("tool_name")).isEqualTo("order_status");
+        assertThat(audit.get("success")).isEqualTo(false);
+        assertThat(audit.get("error_message")).isNotNull();
     }
 
     // --- helpers ------------------------------------------------------------
