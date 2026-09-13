@@ -3,6 +3,8 @@
 *Teach-alongs and deep-dives written after the main journey, indexed here so
 each bonus PR is as easy to learn from as the original 35.*
 
+> **Job-ready deep dives:** For a full “purpose → problem → implementation → how to use → job lens” version of every doc below (with curl/psql/actuator snippets and interview Q&A), see [`more-detail-on-additions/README.md`](more-detail-on-additions/README.md) — now with 3 appendices: **16 Security/PII/Rate-limit/Resilience**, **17 Configuration & Environments**, **18 Observability Runbook**.
+
 | Document | PR | Covers |
 |---|---|---|
 | [`01-rag-and-docs-search.md`](01-rag-and-docs-search.md) | #38 | RAG end-to-end — ingest/chunk/embed/retrieve/generate, the exact code, how to run `docs_search`, the failures hit (Spring AI 1.0.0 API, eager auto-config, Java 25/ByteBuddy, shadowed test config) |
